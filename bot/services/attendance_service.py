@@ -45,21 +45,31 @@ def start_checkin_flow(
     
     # Kiểm tra phiên trước chưa đóng
     open_session = conn.execute(
-        """SELECT id FROM attendance_sessions 
+        """SELECT id, checkin_time FROM attendance_sessions 
            WHERE employee_id = ? AND status = 'checked_in'""",
         (employee_id,)
     ).fetchone()
     if open_session:
-        raise ValueError("Bạn có phiên công chưa đóng (check-out trước)")
+        if open_session["checkin_time"] is None:
+            # Phiên bị kẹt (bot crash trước khi nhận ảnh) → xóa để check-in lại
+            conn.execute("DELETE FROM attendance_sessions WHERE id = ?", (open_session["id"],))
+            logger.info("Đã xóa phiên kẹt id=%s cho employee %s", open_session["id"], employee_id)
+        else:
+            raise ValueError("Bạn có phiên công chưa đóng (check-out trước)")
     
     # Kiểm tra đã check-in ca này chưa
     existing = conn.execute(
-        """SELECT id FROM attendance_sessions 
+        """SELECT id, checkin_time FROM attendance_sessions 
            WHERE registration_id = ? AND status IN ('checked_in', 'checked_out')""",
         (registration_id,)
     ).fetchone()
     if existing:
-        raise ValueError("Ca này đã được check-in")
+        if existing["checkin_time"] is None:
+            # Phiên kẹt cho ca này → xóa
+            conn.execute("DELETE FROM attendance_sessions WHERE id = ?", (existing["id"],))
+            logger.info("Đã xóa phiên kẹt ca id=%s", existing["id"])
+        else:
+            raise ValueError("Ca này đã được check-in")
     
     # Tính giờ lịch
     now = vn_now()
