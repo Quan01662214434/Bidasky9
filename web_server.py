@@ -625,14 +625,14 @@ async def api_save_employee(payload: EmployeePayload, auth: bool = Depends(verif
                     VALUES (%s, %s, %s, %s, %s)
                 """, (payload.telegram_id, int(payload.rate), now, now, str(owner_id)))
                 
-        conn.cursor.connection.commit()
+        pass  # autocommit
         return {"success": True}
     except Exception as e:
-        conn.cursor.connection.rollback()
+        pass  # autocommit
         logger.error(f"Lỗi lưu nhân viên: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 
 @app.get("/api/v2/salary")
@@ -690,7 +690,7 @@ async def api_salary(month: str = None, auth: bool = Depends(verify_owner_auth))
             
         return {"month": month, "salaries": salary_data}
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 # ─── API: Inventory ──────────────────────────────────────────
 
@@ -917,7 +917,7 @@ async def api_inventory_items(auth: bool = Depends(verify_owner_auth)):
             items.append(d)
         return {"items": items}
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 @app.get("/api/v2/inventory/import")
 async def api_inventory_import_dummy():
@@ -965,14 +965,14 @@ async def api_inventory_import(payload: ImportPayload, auth: bool = Depends(veri
                 VALUES ('expense', %s, %s, 'completed', %s, %s, %s, 'stock_receipt', %s)
             """, (payload.paid_amount, f"Thanh toán nhập hàng: {payload.supplier}", str(owner_id), now.isoformat(), shift_id, receipt_id))
             
-        conn.cursor.connection.commit()
+        pass  # autocommit
         return {"success": True, "receipt_id": receipt_id}
     except Exception as e:
-        conn.cursor.connection.rollback()
+        pass  # autocommit
         logger.error(f"Lỗi nhập hàng: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 
 class InventoryCheckItem(BaseModel):
@@ -1017,14 +1017,14 @@ async def api_inventory_check(payload: InventoryCheckPayload, auth: bool = Depen
                     VALUES (%s, %s, %s, 0, 'base', 0)
                 """, (receipt_id, adj.item_id, adj.diff))
 
-        conn.cursor.connection.commit()
+        pass  # autocommit
         return {"success": True}
     except Exception as e:
-        conn.cursor.connection.rollback()
+        pass  # autocommit
         logger.error(f"Lỗi kiểm kho: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 class SaveItemPayload(BaseModel):
     id: Optional[int] = None
@@ -1057,14 +1057,14 @@ async def api_save_inventory_item(payload: SaveItemPayload, auth: bool = Depends
             """, (payload.name, payload.category, payload.base_unit, payload.pack_unit, 
                   payload.pack_size, payload.low_stock_threshold, payload.is_active))
         
-        conn.cursor.connection.commit()
+        pass  # autocommit
         return {"success": True}
     except Exception as e:
-        conn.cursor.connection.rollback()
+        pass  # autocommit
         logger.error(f"Lỗi lưu mặt hàng: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 class TransactionPayload(BaseModel):
     type: str # 'income' or 'expense'
@@ -1103,7 +1103,7 @@ async def api_get_transactions(date: str = None, auth: bool = Depends(verify_own
             
         return {"transactions": txs}
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 @app.post("/api/v2/transactions")
 async def api_post_transactions(payload: TransactionPayload, auth: bool = Depends(verify_owner_auth)):
@@ -1121,14 +1121,14 @@ async def api_post_transactions(payload: TransactionPayload, auth: bool = Depend
             VALUES (%s, %s, %s, 'completed', %s, %s, %s)
         """, (payload.type, payload.amount, payload.description, str(owner_id), now.isoformat(), shift_id))
         
-        conn.cursor.connection.commit()
+        pass  # autocommit
         return {"success": True}
     except Exception as e:
-        conn.cursor.connection.rollback()
+        pass  # autocommit
         logger.error(f"Lỗi tạo giao dịch: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 class DebtPayPayload(BaseModel):
     debt_id: int
@@ -1181,14 +1181,14 @@ async def api_debts_pay(payload: DebtPayPayload, auth: bool = Depends(verify_own
                 VALUES ('income', %s, %s, 'completed', %s, %s, %s, 'debt_payment', %s)
             """, (payload.amount, f"Thu nợ: {customer_name} (Bill {debt['bill_code']})", str(owner_id), now, shift_id, payload.debt_id))
             
-        conn.cursor.connection.commit()
+        pass  # autocommit
         return {"success": True, "new_remaining": new_remaining, "status": new_status}
     except Exception as e:
-        conn.cursor.connection.rollback()
+        pass  # autocommit
         logger.error(f"Lỗi trả nợ: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        conn.cursor.close()
+        pass  # autocommit
 
 if __name__ == "__main__":
     import uvicorn
