@@ -31,9 +31,8 @@ ADJ_PROCESS = 66
 # ==================== CHECK-IN ====================
 
 async def start_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Bắt đầu check-in."""
+    """Bắt đầu check-in. Hỗ trợ cả inline button và reply keyboard."""
     query = update.callback_query
-    await query.answer()
     
     user_id = update.effective_user.id
     now = vn_now()
@@ -42,10 +41,12 @@ async def start_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
     shifts = get_approved_shift_for_checkin(user_id, now.isoformat())
     
     if not shifts:
-        await query.edit_message_text(
-            "⚠️ Không có ca đã duyệt hôm nay.\n"
-            "Hãy đăng ký ca trước."
-        )
+        msg = "⚠️ Không có ca đã duyệt hôm nay.\nHãy đăng ký ca trước."
+        if query:
+            await query.answer()
+            await query.edit_message_text(msg)
+        else:
+            await update.message.reply_text(msg)
         return ConversationHandler.END
     
     keyboard = []
@@ -54,11 +55,12 @@ async def start_checkin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         keyboard.append([InlineKeyboardButton(label, callback_data=f"{CB.ATT_CHECKIN}:shift:{s['id']}")])
     keyboard.append([InlineKeyboardButton("🔙 Menu", callback_data=f"{CB.BACK}:menu")])
     
-    await query.edit_message_text(
-        "✅ *VÀO LÀM*\n\nChọn ca:",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
-    )
+    text = "✅ *VÀO LÀM*\n\nChọn ca:"
+    if query:
+        await query.answer()
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    else:
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
     return CI_SELECT_SHIFT
 
 
@@ -467,7 +469,10 @@ async def cancel_att(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def get_handlers():
     """Trả về handlers."""
     checkin_conv = ConversationHandler(
-        entry_points=[CallbackQueryHandler(start_checkin, pattern=f"^{CB.ATT_CHECKIN}:start$")],
+        entry_points=[
+            CallbackQueryHandler(start_checkin, pattern=f"^{CB.ATT_CHECKIN}:start$"),
+            MessageHandler(filters.Regex(r"^✅ Check-in$"), start_checkin),
+        ],
         states={
             CI_SELECT_SHIFT: [CallbackQueryHandler(select_shift_checkin, pattern=f"^{CB.ATT_CHECKIN}:shift:")],
             CI_WAIT_PHOTO: [MessageHandler(filters.PHOTO | filters.TEXT, receive_checkin_photo)],

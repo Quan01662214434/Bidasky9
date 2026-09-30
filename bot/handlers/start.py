@@ -175,15 +175,7 @@ async def handle_quick_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if text == "🏠 Mở Menu":
         await _show_main_menu(update, context)
     elif text == "✅ Check-in":
-        from bot.handlers.attendance import start_checkin
-        # Giả lập query
-        class FakeQuery:
-            def __init__(self, data): self.data = data
-            async def answer(self): pass
-            async def edit_message_text(self, *args, **kwargs):
-                await update.message.reply_text(*args, **kwargs)
-        update.callback_query = FakeQuery(f"{CB.ATT_CHECKIN}:start")
-        await start_checkin(update, context)
+        pass  # ConversationHandler trong attendance.py xử lý trực tiếp
     elif text == "🚪 Check-out":
         from bot.handlers.attendance import do_checkout
         class FakeQuery:
