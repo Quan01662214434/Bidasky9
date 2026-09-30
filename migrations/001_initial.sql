@@ -1,6 +1,6 @@
 -- Migration 001: Schema ban đầu
 -- Bot Telegram Quản Lý Quán Bida
--- Mọi cột tiền: INTEGER (VND), không dùng REAL/FLOAT
+-- Mọi cột tiền: BIGINT (VND), không dùng REAL/FLOAT
 -- Thời gian: TEXT ISO 8601 UTC, hiển thị theo Asia/Ho_Chi_Minh
 
 
@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS config (
     key TEXT PRIMARY KEY,
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    updated_by INTEGER,  -- telegram_id
-    version INTEGER DEFAULT 1
+    updated_by BIGINT,  -- telegram_id
+    version BIGINT DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS config_history (
@@ -21,32 +21,32 @@ CREATE TABLE IF NOT EXISTS config_history (
     old_value TEXT,
     new_value TEXT NOT NULL,
     changed_at TEXT NOT NULL,
-    changed_by INTEGER NOT NULL,
-    version INTEGER NOT NULL
+    changed_by BIGINT NOT NULL,
+    version BIGINT NOT NULL
 );
 
 -- ==================== NGƯỜI DÙNG ====================
 CREATE TABLE IF NOT EXISTS users (
-    telegram_id INTEGER PRIMARY KEY,
+    telegram_id BIGINT PRIMARY KEY,
     display_name TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'unknown',  -- owner/employee/unknown
     phone TEXT,
-    is_active INTEGER NOT NULL DEFAULT 1,
+    is_active BIGINT NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
-    created_by INTEGER,
+    created_by BIGINT,
     deactivated_at TEXT,
-    deactivated_by INTEGER
+    deactivated_by BIGINT
 );
 
 -- ==================== MỨC LƯƠNG ====================
 CREATE TABLE IF NOT EXISTS wage_rates (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
-    hourly_rate INTEGER NOT NULL,      -- VND/giờ
+    employee_id BIGINT NOT NULL,
+    hourly_rate BIGINT NOT NULL,      -- VND/giờ
     effective_from TEXT NOT NULL,       -- Ngày hiệu lực ISO
     effective_to TEXT,                  -- NULL = hiện tại
     created_at TEXT NOT NULL,
-    created_by INTEGER NOT NULL,
+    created_by BIGINT NOT NULL,
     note TEXT
 );
 
@@ -56,25 +56,25 @@ CREATE TABLE IF NOT EXISTS shift_templates (
     name TEXT NOT NULL,                 -- Tên ca: "Ca sáng", "Ca tối"
     start_time TEXT NOT NULL,           -- HH:MM
     end_time TEXT NOT NULL,             -- HH:MM (có thể < start nếu qua 0h)
-    crosses_midnight INTEGER DEFAULT 0, -- 1 nếu ca qua nửa đêm
-    max_staff INTEGER NOT NULL DEFAULT 1,
-    is_active INTEGER NOT NULL DEFAULT 1,
+    crosses_midnight BIGINT DEFAULT 0, -- 1 nếu ca qua nửa đêm
+    max_staff BIGINT NOT NULL DEFAULT 1,
+    is_active BIGINT NOT NULL DEFAULT 1,
     created_at TEXT NOT NULL,
-    created_by INTEGER NOT NULL
+    created_by BIGINT NOT NULL
 );
 
 -- ==================== ĐĂNG KÝ CA ====================
 CREATE TABLE IF NOT EXISTS shift_registrations (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
-    template_id INTEGER NOT NULL,
+    employee_id BIGINT NOT NULL,
+    template_id BIGINT NOT NULL,
     shift_date TEXT NOT NULL,           -- YYYY-MM-DD ngày bắt đầu ca
     status TEXT NOT NULL DEFAULT 'pending',
     approved_at TEXT,
-    approved_by INTEGER,
+    approved_by BIGINT,
     reject_reason TEXT,
     cancelled_at TEXT,
-    cancelled_by INTEGER,
+    cancelled_by BIGINT,
     cancel_reason TEXT,
     created_at TEXT NOT NULL,
     UNIQUE(employee_id, template_id, shift_date)
@@ -83,13 +83,13 @@ CREATE TABLE IF NOT EXISTS shift_registrations (
 -- ==================== ĐỔI CA ====================
 CREATE TABLE IF NOT EXISTS shift_swaps (
     id SERIAL PRIMARY KEY,
-    registration_id INTEGER NOT NULL,
-    from_employee INTEGER NOT NULL,
-    to_employee INTEGER NOT NULL,
+    registration_id BIGINT NOT NULL,
+    from_employee BIGINT NOT NULL,
+    to_employee BIGINT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending_receiver',
     receiver_responded_at TEXT,
     owner_decided_at TEXT,
-    owner_decision_by INTEGER,
+    owner_decision_by BIGINT,
     reason TEXT,
     created_at TEXT NOT NULL
 );
@@ -97,8 +97,8 @@ CREATE TABLE IF NOT EXISTS shift_swaps (
 -- ==================== CHẤM CÔNG ====================
 CREATE TABLE IF NOT EXISTS attendance_sessions (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
-    registration_id INTEGER,
+    employee_id BIGINT NOT NULL,
+    registration_id BIGINT,
     shift_date TEXT NOT NULL,
     scheduled_start TEXT,              -- Giờ lịch ISO
     scheduled_end TEXT,                -- Giờ lịch ISO
@@ -113,40 +113,40 @@ CREATE TABLE IF NOT EXISTS attendance_sessions (
     checkout_time TEXT,                -- Máy chủ nhận thao tác
 
     -- Tính công
-    approved_minutes INTEGER,          -- Phút được công nhận (NULL = chưa tính)
-    late_minutes INTEGER DEFAULT 0,
-    early_leave_minutes INTEGER DEFAULT 0,
-    overtime_minutes INTEGER DEFAULT 0,
-    break_minutes INTEGER DEFAULT 0,   -- Nghỉ không lương
+    approved_minutes BIGINT,          -- Phút được công nhận (NULL = chưa tính)
+    late_minutes BIGINT DEFAULT 0,
+    early_leave_minutes BIGINT DEFAULT 0,
+    overtime_minutes BIGINT DEFAULT 0,
+    break_minutes BIGINT DEFAULT 0,   -- Nghỉ không lương
 
     status TEXT NOT NULL DEFAULT 'checked_in',
-    is_exception INTEGER DEFAULT 0,    -- Ngoại lệ cần chủ xử lý
+    is_exception BIGINT DEFAULT 0,    -- Ngoại lệ cần chủ xử lý
     exception_reason TEXT,
-    wage_amount INTEGER,               -- Tiền công phiên này (VND)
+    wage_amount BIGINT,               -- Tiền công phiên này (VND)
 
     created_at TEXT NOT NULL,
-    created_by INTEGER NOT NULL        -- Người tạo (NV hoặc chủ bù)
+    created_by BIGINT NOT NULL        -- Người tạo (NV hoặc chủ bù)
 );
 
 -- ==================== ẢNH CHECK-IN ====================
 CREATE TABLE IF NOT EXISTS checkin_photos (
     id SERIAL PRIMARY KEY,
-    session_id INTEGER NOT NULL,
-    employee_id INTEGER NOT NULL,
+    session_id BIGINT NOT NULL,
+    employee_id BIGINT NOT NULL,
     file_id TEXT NOT NULL,             -- Telegram file_id
     file_unique_id TEXT NOT NULL,      -- Telegram file_unique_id (phát hiện trùng)
     local_path TEXT,                   -- Đường dẫn lưu cục bộ
     telegram_timestamp TEXT,           -- Giờ Telegram
     server_received_at TEXT NOT NULL,  -- Máy chủ nhận
-    is_duplicate INTEGER DEFAULT 0,   -- Phát hiện ảnh trùng
+    is_duplicate BIGINT DEFAULT 0,   -- Phát hiện ảnh trùng
     created_at TEXT NOT NULL
 );
 
 -- ==================== YÊU CẦU SỬA CÔNG ====================
 CREATE TABLE IF NOT EXISTS attendance_adjustments (
     id SERIAL PRIMARY KEY,
-    session_id INTEGER,  -- NULL nếu tạo phiên mới
-    employee_id INTEGER NOT NULL,
+    session_id BIGINT,  -- NULL nếu tạo phiên mới
+    employee_id BIGINT NOT NULL,
     shift_date TEXT NOT NULL,
     requested_checkin TEXT,
     requested_checkout TEXT,
@@ -155,7 +155,7 @@ CREATE TABLE IF NOT EXISTS attendance_adjustments (
 
     -- Xử lý
     status TEXT NOT NULL DEFAULT 'pending',
-    decided_by INTEGER,
+    decided_by BIGINT,
     decided_at TEXT,
     decision_reason TEXT,
     approved_checkin TEXT,             -- Giờ chủ duyệt (có thể khác yêu cầu)
@@ -164,39 +164,39 @@ CREATE TABLE IF NOT EXISTS attendance_adjustments (
     -- Giá trị gốc trước điều chỉnh
     original_checkin TEXT,
     original_checkout TEXT,
-    original_minutes INTEGER,
+    original_minutes BIGINT,
 
     created_at TEXT NOT NULL,
-    version INTEGER DEFAULT 1
+    version BIGINT DEFAULT 1
 );
 
 -- ==================== CA QUỸ ====================
 CREATE TABLE IF NOT EXISTS cash_shifts (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
+    employee_id BIGINT NOT NULL,
     shift_date TEXT NOT NULL,
     
     -- Mở ca
-    opening_cash INTEGER NOT NULL,     -- Tiền mặt kiểm đếm đầu ca
-    expected_opening INTEGER,          -- Tiền được bàn giao từ ca trước
-    opening_diff INTEGER DEFAULT 0,    -- Chênh lệch đầu ca
-    previous_shift_id INTEGER ,
+    opening_cash BIGINT NOT NULL,     -- Tiền mặt kiểm đếm đầu ca
+    expected_opening BIGINT,          -- Tiền được bàn giao từ ca trước
+    opening_diff BIGINT DEFAULT 0,    -- Chênh lệch đầu ca
+    previous_shift_id BIGINT ,
     
     -- Doanh thu KiotViet
-    total_bill_revenue INTEGER,        -- Tổng bill nhập từ KiotViet
+    total_bill_revenue BIGINT,        -- Tổng bill nhập từ KiotViet
     bill_report_start TEXT,            -- Mốc giờ đầu báo cáo
     bill_report_end TEXT,              -- Mốc giờ cuối báo cáo
     bill_report_photo_id TEXT,         -- Ảnh báo cáo KiotViet
     
     -- Kết ca
-    closing_cash_counted INTEGER,      -- Tiền mặt kiểm đếm cuối ca
-    expected_closing_cash INTEGER,     -- Tiền mặt kỳ vọng (bot tính)
-    closing_diff INTEGER,              -- Chênh lệch cuối ca
+    closing_cash_counted BIGINT,      -- Tiền mặt kiểm đếm cuối ca
+    expected_closing_cash BIGINT,     -- Tiền mặt kỳ vọng (bot tính)
+    closing_diff BIGINT,              -- Chênh lệch cuối ca
     closing_diff_reason TEXT,
     closing_note TEXT,
     
     -- Xác nhận giao nhận
-    handover_confirmed_by INTEGER,     -- Người ca sau xác nhận
+    handover_confirmed_by BIGINT,     -- Người ca sau xác nhận
     handover_confirmed_at TEXT,
     debt_ack_at TEXT,                   -- Thời điểm xem nợ bàn giao
     debt_ack_snapshot TEXT,             -- JSON snapshot danh sách nợ
@@ -210,7 +210,7 @@ CREATE TABLE IF NOT EXISTS cash_shifts (
     
     -- Snapshot khi khóa ca (JSON)
     closing_snapshot TEXT,
-    snapshot_version INTEGER DEFAULT 1,
+    snapshot_version BIGINT DEFAULT 1,
     
     created_at TEXT NOT NULL
 );
@@ -221,13 +221,13 @@ CREATE TABLE IF NOT EXISTS cash_shifts (
 -- ==================== ẢNH GIAO DỊCH ====================
 CREATE TABLE IF NOT EXISTS transaction_photos (
     id SERIAL PRIMARY KEY,
-    transaction_id INTEGER NOT NULL ,
+    transaction_id BIGINT NOT NULL ,
     file_id TEXT NOT NULL,
     file_unique_id TEXT NOT NULL,
     local_path TEXT,
     photo_type TEXT,                   -- bill/transfer_proof/receipt/other
     note TEXT,
-    uploaded_by INTEGER NOT NULL,
+    uploaded_by BIGINT NOT NULL,
     created_at TEXT NOT NULL
 );
 
@@ -238,30 +238,30 @@ CREATE TABLE IF NOT EXISTS customers (
     phone TEXT,
     description TEXT,                  -- Mô tả nhận diện
     note TEXT,
-    is_allowed_debt INTEGER DEFAULT 0, -- Được phép nợ
-    debt_limit INTEGER,                -- Hạn mức nợ (VND)
+    is_allowed_debt BIGINT DEFAULT 0, -- Được phép nợ
+    debt_limit BIGINT,                -- Hạn mức nợ (VND)
     created_at TEXT NOT NULL,
-    created_by INTEGER NOT NULL
+    created_by BIGINT NOT NULL
 );
 
 -- ==================== CÔNG NỢ ====================
 CREATE TABLE IF NOT EXISTS debt_records (
     id SERIAL PRIMARY KEY,
-    customer_id INTEGER NOT NULL,
-    cash_shift_id INTEGER ,
+    customer_id BIGINT NOT NULL,
+    cash_shift_id BIGINT ,
     bill_code TEXT,                    -- Mã bill KiotViet
     table_name TEXT,                   -- Bàn nếu cần
     
     -- Thời gian
     bill_datetime TEXT,                -- Ngày giờ bill/phát sinh
     server_recorded_at TEXT NOT NULL,  -- Máy chủ ghi nhận
-    is_retroactive INTEGER DEFAULT 0, -- Nhập hồi tố
+    is_retroactive BIGINT DEFAULT 0, -- Nhập hồi tố
     
     -- Tiền
-    total_bill_amount INTEGER NOT NULL, -- Tổng bill
-    cash_paid INTEGER DEFAULT 0,       -- Đã trả TM khi tạo nợ
-    transfer_paid INTEGER DEFAULT 0,   -- Đã trả CK khi tạo nợ
-    remaining_debt INTEGER NOT NULL,   -- Số còn nợ
+    total_bill_amount BIGINT NOT NULL, -- Tổng bill
+    cash_paid BIGINT DEFAULT 0,       -- Đã trả TM khi tạo nợ
+    transfer_paid BIGINT DEFAULT 0,   -- Đã trả CK khi tạo nợ
+    remaining_debt BIGINT NOT NULL,   -- Số còn nợ
     
     -- Hạng mục
     item_categories TEXT,              -- JSON: [{type, description, amount}]
@@ -272,12 +272,12 @@ CREATE TABLE IF NOT EXISTS debt_records (
     
     -- Trạng thái
     status TEXT NOT NULL DEFAULT 'active',
-    is_over_limit INTEGER DEFAULT 0,   -- Vượt quyền cho nợ
+    is_over_limit BIGINT DEFAULT 0,   -- Vượt quyền cho nợ
     exception_note TEXT,
     
     -- Audit
-    recorded_by INTEGER NOT NULL,
-    shift_id INTEGER,                  -- Ca làm liên quan
+    recorded_by BIGINT NOT NULL,
+    shift_id BIGINT,                  -- Ca làm liên quan
     
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
@@ -286,18 +286,18 @@ CREATE TABLE IF NOT EXISTS debt_records (
 -- ==================== THANH TOÁN NỢ ====================
 CREATE TABLE IF NOT EXISTS debt_payments (
     id SERIAL PRIMARY KEY,
-    debt_record_id INTEGER NOT NULL ,
-    amount INTEGER NOT NULL,           -- VND
+    debt_record_id BIGINT NOT NULL ,
+    amount BIGINT NOT NULL,           -- VND
     payment_method TEXT NOT NULL,      -- cash/transfer/offset (đối trừ lương)
-    cash_shift_id INTEGER ,
-    transaction_id INTEGER ,
+    cash_shift_id BIGINT ,
+    transaction_id BIGINT ,
     
     -- Xác minh
-    transfer_verified INTEGER DEFAULT 0,
-    verified_by INTEGER,
+    transfer_verified BIGINT DEFAULT 0,
+    verified_by BIGINT,
     verified_at TEXT,
     
-    collected_by INTEGER NOT NULL,
+    collected_by BIGINT NOT NULL,
     note TEXT,
     created_at TEXT NOT NULL,
     
@@ -308,50 +308,50 @@ CREATE TABLE IF NOT EXISTS debt_payments (
 -- ==================== ẢNH NỢ/CHỨNG TỪ ====================
 CREATE TABLE IF NOT EXISTS debt_photos (
     id SERIAL PRIMARY KEY,
-    debt_record_id INTEGER NOT NULL ,
+    debt_record_id BIGINT NOT NULL ,
     file_id TEXT NOT NULL,
     file_unique_id TEXT NOT NULL,
     local_path TEXT,
     photo_type TEXT NOT NULL DEFAULT 'bill',  -- bill/transfer_proof/other
     note TEXT,
-    uploaded_by INTEGER NOT NULL,
+    uploaded_by BIGINT NOT NULL,
     created_at TEXT NOT NULL
 );
 
 -- ==================== BẢNG LƯƠNG ====================
 CREATE TABLE IF NOT EXISTS payroll (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
-    period_year INTEGER NOT NULL,
-    period_month INTEGER NOT NULL,
+    employee_id BIGINT NOT NULL,
+    period_year BIGINT NOT NULL,
+    period_month BIGINT NOT NULL,
     
     -- Công
-    total_approved_minutes INTEGER DEFAULT 0,
-    total_sessions INTEGER DEFAULT 0,
+    total_approved_minutes BIGINT DEFAULT 0,
+    total_sessions BIGINT DEFAULT 0,
     
     -- Tiền
-    base_wage INTEGER DEFAULT 0,       -- Tiền công = phút × rate/60
-    bonus INTEGER DEFAULT 0,           -- Thưởng/phụ cấp
-    total_advances INTEGER DEFAULT 0,  -- Tổng ứng đã giao chưa đối trừ
-    total_consumables INTEGER DEFAULT 0, -- Đồ dùng chưa trả
-    deductions INTEGER DEFAULT 0,      -- Khấu trừ hợp lệ
-    already_paid INTEGER DEFAULT 0,    -- Đã thanh toán trong kỳ
-    net_pay INTEGER DEFAULT 0,         -- Còn thanh toán
+    base_wage BIGINT DEFAULT 0,       -- Tiền công = phút × rate/60
+    bonus BIGINT DEFAULT 0,           -- Thưởng/phụ cấp
+    total_advances BIGINT DEFAULT 0,  -- Tổng ứng đã giao chưa đối trừ
+    total_consumables BIGINT DEFAULT 0, -- Đồ dùng chưa trả
+    deductions BIGINT DEFAULT 0,      -- Khấu trừ hợp lệ
+    already_paid BIGINT DEFAULT 0,    -- Đã thanh toán trong kỳ
+    net_pay BIGINT DEFAULT 0,         -- Còn thanh toán
     
     -- Trạng thái
     status TEXT NOT NULL DEFAULT 'draft',
-    has_unresolved INTEGER DEFAULT 0,  -- Còn công/giá chưa xử lý
+    has_unresolved BIGINT DEFAULT 0,  -- Còn công/giá chưa xử lý
     unresolved_details TEXT,           -- JSON mô tả
     
     -- Snapshot khi khóa
     snapshot TEXT,                      -- JSON toàn bộ chi tiết
-    snapshot_version INTEGER DEFAULT 1,
+    snapshot_version BIGINT DEFAULT 1,
     
     -- Xác nhận
     employee_confirmed_at TEXT,
     employee_dispute_reason TEXT,
     owner_approved_at TEXT,
-    owner_approved_by INTEGER,
+    owner_approved_by BIGINT,
     paid_at TEXT,
     
     created_at TEXT NOT NULL,
@@ -363,41 +363,41 @@ CREATE TABLE IF NOT EXISTS payroll (
 -- ==================== CHI TIẾT CÔNG TRONG BẢNG LƯƠNG ====================
 CREATE TABLE IF NOT EXISTS payroll_entries (
     id SERIAL PRIMARY KEY,
-    payroll_id INTEGER NOT NULL ,
-    session_id INTEGER NOT NULL,
-    minutes INTEGER NOT NULL,
-    wage_rate INTEGER NOT NULL,        -- Mức lương áp dụng
-    amount INTEGER NOT NULL,           -- Tiền = minutes * rate / 60
+    payroll_id BIGINT NOT NULL ,
+    session_id BIGINT NOT NULL,
+    minutes BIGINT NOT NULL,
+    wage_rate BIGINT NOT NULL,        -- Mức lương áp dụng
+    amount BIGINT NOT NULL,           -- Tiền = minutes * rate / 60
     note TEXT
 );
 
 -- ==================== ỨNG LƯƠNG ====================
 CREATE TABLE IF NOT EXISTS salary_advances (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
-    amount INTEGER NOT NULL,
+    employee_id BIGINT NOT NULL,
+    amount BIGINT NOT NULL,
     reason TEXT,
     
     -- Trạng thái
     status TEXT NOT NULL DEFAULT 'requested',
     
     -- Duyệt
-    approved_by INTEGER,
+    approved_by BIGINT,
     approved_at TEXT,
     reject_reason TEXT,
     
     -- Giao tiền
     delivered_at TEXT,
-    delivered_by INTEGER,
+    delivered_by BIGINT,
     payment_source TEXT,               -- cash/transfer/other
-    cash_shift_id INTEGER ,
-    transaction_id INTEGER ,
+    cash_shift_id BIGINT ,
+    transaction_id BIGINT ,
     
     -- Đối trừ
-    settled_in_payroll_id INTEGER ,
+    settled_in_payroll_id BIGINT ,
     settled_at TEXT,
-    settled_amount INTEGER,            -- Số đã đối trừ
-    remaining_unsettled INTEGER,       -- Số chưa đối trừ
+    settled_amount BIGINT,            -- Số đã đối trừ
+    remaining_unsettled BIGINT,       -- Số chưa đối trừ
     
     evidence_note TEXT,
     
@@ -412,51 +412,51 @@ CREATE TABLE IF NOT EXISTS consumable_items (
     category TEXT,                     -- nước/thuốc/đồ ăn/khác
     unit TEXT NOT NULL,                -- chai/lon/ly/điếu/gói/cái
     pack_unit TEXT,                    -- gói/bao (đơn vị lớn)
-    pack_size INTEGER,                 -- Số đơn vị trong gói (VD: 20 điếu/bao)
-    is_active INTEGER DEFAULT 1,
+    pack_size BIGINT,                 -- Số đơn vị trong gói (VD: 20 điếu/bao)
+    is_active BIGINT DEFAULT 1,
     created_at TEXT NOT NULL,
-    created_by INTEGER NOT NULL
+    created_by BIGINT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS consumable_usage (
     id SERIAL PRIMARY KEY,
-    employee_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,          -- Số đơn vị cơ sở
+    employee_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
+    quantity BIGINT NOT NULL,          -- Số đơn vị cơ sở
     usage_datetime TEXT NOT NULL,       -- Thời gian thực dùng
     recorded_at TEXT NOT NULL,          -- Thời gian ghi
-    is_late_entry INTEGER DEFAULT 0,   -- Nhập muộn
-    cash_shift_id INTEGER ,
-    shift_registration_id INTEGER,
+    is_late_entry BIGINT DEFAULT 0,   -- Nhập muộn
+    cash_shift_id BIGINT ,
+    shift_registration_id BIGINT,
     photo_id TEXT,                     -- Ảnh tùy chọn
     note TEXT,
     
     -- Thanh toán
-    is_free INTEGER DEFAULT 0,         -- Miễn phí (chủ xác nhận)
-    free_approved_by INTEGER,
-    paid_amount INTEGER DEFAULT 0,     -- Đã trả (VND)
+    is_free BIGINT DEFAULT 0,         -- Miễn phí (chủ xác nhận)
+    free_approved_by BIGINT,
+    paid_amount BIGINT DEFAULT 0,     -- Đã trả (VND)
     paid_at TEXT,
     
     -- Liên kết kho
-    stock_issue_id INTEGER,
+    stock_issue_id BIGINT,
     
     -- Audit
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    is_adjusted INTEGER DEFAULT 0,
+    is_adjusted BIGINT DEFAULT 0,
     adjustment_note TEXT
 );
 
 -- ==================== GIÁ ĐỒ DÙNG CUỐI THÁNG ====================
 CREATE TABLE IF NOT EXISTS consumable_prices (
     id SERIAL PRIMARY KEY,
-    item_id INTEGER NOT NULL,
-    period_year INTEGER NOT NULL,
-    period_month INTEGER NOT NULL,
-    unit_price INTEGER NOT NULL,       -- VND/đơn vị cơ sở
-    set_by INTEGER NOT NULL,
+    item_id BIGINT NOT NULL,
+    period_year BIGINT NOT NULL,
+    period_month BIGINT NOT NULL,
+    unit_price BIGINT NOT NULL,       -- VND/đơn vị cơ sở
+    set_by BIGINT NOT NULL,
     set_at TEXT NOT NULL,
-    copied_from_previous INTEGER DEFAULT 0,
+    copied_from_previous BIGINT DEFAULT 0,
     note TEXT,
     UNIQUE(item_id, period_year, period_month)
 );
@@ -464,11 +464,11 @@ CREATE TABLE IF NOT EXISTS consumable_prices (
 -- Ngoại lệ giá theo nhân viên
 CREATE TABLE IF NOT EXISTS consumable_price_exceptions (
     id SERIAL PRIMARY KEY,
-    price_id INTEGER NOT NULL,
-    employee_id INTEGER NOT NULL,
-    unit_price INTEGER NOT NULL,
+    price_id BIGINT NOT NULL,
+    employee_id BIGINT NOT NULL,
+    unit_price BIGINT NOT NULL,
     reason TEXT NOT NULL,
-    set_by INTEGER NOT NULL,
+    set_by BIGINT NOT NULL,
     set_at TEXT NOT NULL
 );
 
@@ -480,30 +480,30 @@ CREATE TABLE IF NOT EXISTS inventory_items (
     category TEXT,                     -- nước/thuốc/đồ ăn/vật tư
     base_unit TEXT NOT NULL,           -- lon/chai/gói/cái
     pack_unit TEXT,                    -- thùng/lốc
-    pack_size INTEGER,                 -- Số đơn vị/thùng
-    low_stock_threshold INTEGER,       -- Ngưỡng tồn thấp
+    pack_size BIGINT,                 -- Số đơn vị/thùng
+    low_stock_threshold BIGINT,       -- Ngưỡng tồn thấp
     
     -- Giá nhập (chỉ chủ/người được cấp quyền xem)
-    last_import_price INTEGER,
+    last_import_price BIGINT,
     
     -- Liên kết với consumable_items
-    consumable_item_id INTEGER,
+    consumable_item_id BIGINT,
     
     -- Mã KiotViet nếu ánh xạ
     kiotviet_code TEXT,
     
-    is_active INTEGER DEFAULT 1,
+    is_active BIGINT DEFAULT 1,
     created_at TEXT NOT NULL,
-    created_by INTEGER NOT NULL
+    created_by BIGINT NOT NULL
 );
 
 -- Tồn kho đầu kỳ
 CREATE TABLE IF NOT EXISTS initial_stock (
     id SERIAL PRIMARY KEY,
-    item_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,         -- Đơn vị cơ sở
+    item_id BIGINT NOT NULL,
+    quantity BIGINT NOT NULL,         -- Đơn vị cơ sở
     effective_date TEXT NOT NULL,
-    recorded_by INTEGER NOT NULL,
+    recorded_by BIGINT NOT NULL,
     reason TEXT,
     created_at TEXT NOT NULL
 );
@@ -515,17 +515,17 @@ CREATE TABLE IF NOT EXISTS stock_receipts (
     supplier_name TEXT,
     received_date TEXT NOT NULL,       -- Ngày nhận thực tế
     recorded_at TEXT NOT NULL,         -- Ngày ghi
-    received_by INTEGER NOT NULL,
-    cash_shift_id INTEGER ,
+    received_by BIGINT NOT NULL,
+    cash_shift_id BIGINT ,
     
     -- Thanh toán
-    total_amount INTEGER DEFAULT 0,
-    discount INTEGER DEFAULT 0,
-    shipping_fee INTEGER DEFAULT 0,
-    net_amount INTEGER DEFAULT 0,      -- total - discount + shipping
+    total_amount BIGINT DEFAULT 0,
+    discount BIGINT DEFAULT 0,
+    shipping_fee BIGINT DEFAULT 0,
+    net_amount BIGINT DEFAULT 0,      -- total - discount + shipping
     payment_status TEXT DEFAULT 'unpaid', -- paid_cash/paid_transfer/owner_paid/unpaid/partial
     payment_source TEXT,
-    transaction_id INTEGER ,
+    transaction_id BIGINT ,
     
     -- Ảnh hóa đơn
     invoice_photo_id TEXT,
@@ -542,35 +542,35 @@ CREATE TABLE IF NOT EXISTS stock_receipts (
 
 CREATE TABLE IF NOT EXISTS receipt_items (
     id SERIAL PRIMARY KEY,
-    receipt_id INTEGER NOT NULL ,
-    item_id INTEGER NOT NULL,
-    quantity_ordered INTEGER,          -- Số đặt
-    quantity_received INTEGER NOT NULL, -- Số thực nhận (đơn vị cơ sở)
+    receipt_id BIGINT NOT NULL ,
+    item_id BIGINT NOT NULL,
+    quantity_ordered BIGINT,          -- Số đặt
+    quantity_received BIGINT NOT NULL, -- Số thực nhận (đơn vị cơ sở)
     unit_used TEXT,                    -- Đơn vị nhập (thùng/lon)
     raw_quantity REAL,                 -- Số lượng đơn vị nhập (VD: 2 thùng)
-    conversion_factor INTEGER,         -- Hệ số quy đổi
-    unit_price INTEGER,               -- Giá/đơn vị cơ sở
-    line_total INTEGER,               -- quantity_received × unit_price
+    conversion_factor BIGINT,         -- Hệ số quy đổi
+    unit_price BIGINT,               -- Giá/đơn vị cơ sở
+    line_total BIGINT,               -- quantity_received × unit_price
     note TEXT
 );
 
 -- ==================== XUẤT KHO ====================
 CREATE TABLE IF NOT EXISTS stock_issues (
     id SERIAL PRIMARY KEY,
-    item_id INTEGER NOT NULL,
-    quantity INTEGER NOT NULL,         -- Đơn vị cơ sở
+    item_id BIGINT NOT NULL,
+    quantity BIGINT NOT NULL,         -- Đơn vị cơ sở
     issue_type TEXT NOT NULL,          -- sale_kiotviet/employee_use/gift/damage/loss/return_supplier/other
     
     -- Nguồn
-    consumable_usage_id INTEGER,
+    consumable_usage_id BIGINT,
     import_batch_id TEXT,             -- Mã đợt import KiotViet
     
     reason TEXT,
-    approved_by INTEGER,
+    approved_by BIGINT,
     evidence_photo_id TEXT,
     
-    recorded_by INTEGER NOT NULL,
-    cash_shift_id INTEGER ,
+    recorded_by BIGINT NOT NULL,
+    cash_shift_id BIGINT ,
     created_at TEXT NOT NULL
 );
 
@@ -581,21 +581,21 @@ CREATE TABLE IF NOT EXISTS sales_imports (
     period_start TEXT NOT NULL,
     period_end TEXT NOT NULL,
     source_description TEXT,           -- "Báo cáo KiotViet ca 1 ngày 30/09"
-    imported_by INTEGER NOT NULL,
+    imported_by BIGINT NOT NULL,
     import_method TEXT,                -- manual/csv
     status TEXT DEFAULT 'active',      -- active/superseded/cancelled
-    superseded_by INTEGER,
+    superseded_by BIGINT,
     note TEXT,
     created_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sales_import_items (
     id SERIAL PRIMARY KEY,
-    import_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    quantity_sold INTEGER NOT NULL,
-    quantity_returned INTEGER DEFAULT 0,
-    net_quantity INTEGER NOT NULL,      -- sold - returned
+    import_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
+    quantity_sold BIGINT NOT NULL,
+    quantity_returned BIGINT DEFAULT 0,
+    net_quantity BIGINT NOT NULL,      -- sold - returned
     note TEXT
 );
 
@@ -604,17 +604,17 @@ CREATE TABLE IF NOT EXISTS inventory_checks (
     id SERIAL PRIMARY KEY,
     check_date TEXT NOT NULL,
     check_time TEXT NOT NULL,          -- Mốc kiểm kê
-    cash_shift_id INTEGER ,
-    checked_by INTEGER NOT NULL,
+    cash_shift_id BIGINT ,
+    checked_by BIGINT NOT NULL,
     
     status TEXT NOT NULL DEFAULT 'draft',
-    has_pending_sales INTEGER DEFAULT 0, -- Chưa nhập đủ KV
-    sales_import_id INTEGER,
+    has_pending_sales BIGINT DEFAULT 0, -- Chưa nhập đủ KV
+    sales_import_id BIGINT,
     
     snapshot TEXT,                      -- JSON snapshot tồn sổ tại mốc
     note TEXT,
     
-    approved_by INTEGER,
+    approved_by BIGINT,
     approved_at TEXT,
     
     created_at TEXT NOT NULL,
@@ -623,17 +623,17 @@ CREATE TABLE IF NOT EXISTS inventory_checks (
 
 CREATE TABLE IF NOT EXISTS inventory_check_items (
     id SERIAL PRIMARY KEY,
-    check_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    book_quantity INTEGER NOT NULL,    -- Tồn sổ
-    actual_quantity INTEGER NOT NULL,  -- Tồn thực tế
-    difference INTEGER NOT NULL,      -- actual - book
+    check_id BIGINT NOT NULL,
+    item_id BIGINT NOT NULL,
+    book_quantity BIGINT NOT NULL,    -- Tồn sổ
+    actual_quantity BIGINT NOT NULL,  -- Tồn thực tế
+    difference BIGINT NOT NULL,      -- actual - book
     unit_used TEXT,                    -- Đơn vị đếm
     note TEXT,
     
     -- Điều chỉnh
-    adjustment_approved INTEGER DEFAULT 0,
-    adjustment_approved_by INTEGER,
+    adjustment_approved BIGINT DEFAULT 0,
+    adjustment_approved_by BIGINT,
     adjustment_approved_at TEXT,
     adjustment_reason TEXT
 );
@@ -647,27 +647,27 @@ CREATE TABLE IF NOT EXISTS daily_revenue (
     
     -- Nguồn: tổng ngày hoặc cộng ca
     source_type TEXT NOT NULL,          -- daily_total/sum_of_shifts
-    total_bill_revenue INTEGER,        -- Tổng doanh thu bill
+    total_bill_revenue BIGINT,        -- Tổng doanh thu bill
     report_photo_id TEXT,
     
     -- Trạng thái
     status TEXT NOT NULL DEFAULT 'draft', -- draft/partial/complete/reconciled
-    has_open_shifts INTEGER DEFAULT 0,
+    has_open_shifts BIGINT DEFAULT 0,
     missing_data_note TEXT,
     
-    entered_by INTEGER NOT NULL,
+    entered_by BIGINT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    version INTEGER DEFAULT 1
+    version BIGINT DEFAULT 1
 );
 
 -- ==================== LỊCH SỬ THAO TÁC ====================
 CREATE TABLE IF NOT EXISTS audit_log (
     id SERIAL PRIMARY KEY,
-    actor_id INTEGER NOT NULL,
+    actor_id BIGINT NOT NULL,
     action TEXT NOT NULL,
     entity_type TEXT NOT NULL,          -- Bảng/loại đối tượng
-    entity_id INTEGER,
+    entity_id BIGINT,
     old_data TEXT,                      -- JSON trước
     new_data TEXT,                      -- JSON sau
     reason TEXT,
@@ -678,16 +678,16 @@ CREATE TABLE IF NOT EXISTS audit_log (
 -- ==================== HÀNG ĐỢI THÔNG BÁO ====================
 CREATE TABLE IF NOT EXISTS notification_queue (
     id SERIAL PRIMARY KEY,
-    recipient_id INTEGER NOT NULL,
+    recipient_id BIGINT NOT NULL,
     message TEXT NOT NULL,
     notification_type TEXT NOT NULL,
     reference_type TEXT,
-    reference_id INTEGER,
+    reference_id BIGINT,
     
     -- Trạng thái gửi
     status TEXT DEFAULT 'pending',     -- pending/sent/failed/suppressed
-    retry_count INTEGER DEFAULT 0,
-    max_retries INTEGER DEFAULT 3,
+    retry_count BIGINT DEFAULT 0,
+    max_retries BIGINT DEFAULT 3,
     last_error TEXT,
     
     -- Chống lặp
@@ -700,7 +700,7 @@ CREATE TABLE IF NOT EXISTS notification_queue (
 
 -- ==================== TRẠNG THÁI NHẬP DỞ ====================
 CREATE TABLE IF NOT EXISTS user_states (
-    telegram_id INTEGER PRIMARY KEY,
+    telegram_id BIGINT PRIMARY KEY,
     state_key TEXT,                    -- Tên luồng đang nhập
     state_data TEXT,                   -- JSON dữ liệu tạm
     updated_at TEXT NOT NULL
@@ -709,28 +709,28 @@ CREATE TABLE IF NOT EXISTS user_states (
 -- ==================== INDEX ====================
 CREATE TABLE IF NOT EXISTS transactions (
     id SERIAL PRIMARY KEY,
-    cash_shift_id INTEGER ,  -- NULL nếu ngoài quầy
+    cash_shift_id BIGINT ,  -- NULL nếu ngoài quầy
     type TEXT NOT NULL,
-    amount INTEGER NOT NULL,           -- VND, luôn dương
+    amount BIGINT NOT NULL,           -- VND, luôn dương
     bill_code TEXT,                    -- Mã bill KiotViet
     description TEXT,
     category TEXT,                     -- Nhóm chi
     payment_source TEXT,               -- cash/transfer/other
     
     -- Liên kết
-    debt_record_id INTEGER ,
-    debt_payment_id INTEGER ,
-    advance_id INTEGER ,
-    payroll_id INTEGER ,
-    receipt_id INTEGER ,
+    debt_record_id BIGINT ,
+    debt_payment_id BIGINT ,
+    advance_id BIGINT ,
+    payroll_id BIGINT ,
+    receipt_id BIGINT ,
     
     -- Idempotency
     idempotency_key TEXT UNIQUE,
     
     -- Audit
-    recorded_by INTEGER NOT NULL,
-    verified INTEGER DEFAULT 0,
-    verified_by INTEGER,
+    recorded_by BIGINT NOT NULL,
+    verified BIGINT DEFAULT 0,
+    verified_by BIGINT,
     verified_at TEXT,
     
     created_at TEXT NOT NULL,
