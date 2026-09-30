@@ -604,11 +604,13 @@ async def api_save_employee(payload: EmployeePayload, auth: bool = Depends(verif
                 WHERE telegram_id = %s
             """, (payload.name, payload.role, payload.telegram_id, payload.is_active, payload.id))
             
-            if payload.rate > 0:
+            # Check current rate
+            current_rate = conn.execute("SELECT hourly_rate FROM wage_rates WHERE employee_id = %s ORDER BY effective_from DESC LIMIT 1", (payload.telegram_id,)).fetchone()
+            if not current_rate or current_rate["hourly_rate"] != int(payload.rate):
                 conn.execute("""
                     INSERT INTO wage_rates (employee_id, hourly_rate, effective_from, created_at, created_by)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (payload.telegram_id, payload.rate, now, now, str(owner_id)))
+                """, (payload.telegram_id, int(payload.rate), now, now, str(owner_id)))
         else:
             conn.execute("""
                 INSERT INTO users (telegram_id, display_name, role, is_active, created_at, created_by)
@@ -619,7 +621,7 @@ async def api_save_employee(payload: EmployeePayload, auth: bool = Depends(verif
                 conn.execute("""
                     INSERT INTO wage_rates (employee_id, hourly_rate, effective_from, created_at, created_by)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (payload.telegram_id, payload.rate, now, now, str(owner_id)))
+                """, (payload.telegram_id, int(payload.rate), now, now, str(owner_id)))
                 
         conn.cursor.connection.commit()
         return {"success": True}
