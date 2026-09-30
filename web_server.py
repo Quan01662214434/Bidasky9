@@ -862,6 +862,57 @@ async def api_inventory_import(payload: ImportPayload, auth: bool = Depends(veri
         conn.cursor.close()
 
 
+class InventoryCheckItem(BaseModel):
+    item_id: int
+    system_stock: float
+    counted_stock: float
+    diff: float
+    reason: str
+
+class InventoryCheckPayload(BaseModel):
+    adjustments: List[InventoryCheckItem]
+
+@app.post("/api/v2/inventory/check")
+async def api_inventory_check(payload: InventoryCheckPayload, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        now = vn_now().isoformat()
+        for adj in payload.adjustments:
+            if adj.diff == 0:
+                continue
+                
+            # Log as stock issue if diff < 0 (loss), or a stock receipt if diff > 0 (found extra)
+            # A more robust way is to use an adjustments table, but the system currently
+            # uses initial_stock / receipt_items / stock_issues to calculate stock.
+            # So negative diff -> stock_issue. Positive diff -> receipt_item (via an adjustment receipt)
+            
+            if adj.diff < 0:
+                # Issue
+                conn.execute("""
+                    INSERT INTO stock_issues (item_id, quantity, reason, employee_id, check_date, check_time)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (adj.item_id, abs(adj.diff), f"Kiểm kho: {adj.reason}", str(owner_id), vn_now().strftime("%Y-%m-%d"), vn_now().strftime("%H:%M")))
+            else:
+                # Positive diff -> create a mini receipt
+                conn.execute("""
+                    INSERT INTO stock_receipts (supplier_name, received_date, total_amount, notes, status, created_at)
+                    VALUES ('Điều chỉnh kiểm kho', %s, 0, %s, 'confirmed', %s)
+                """, (vn_now().strftime("%Y-%m-%d"), adj.reason, now))
+                receipt_id = conn.lastrowid
+                conn.execute("""
+                    INSERT INTO receipt_items (receipt_id, item_id, quantity_received, unit_price, unit, total_price)
+                    VALUES (%s, %s, %s, 0, 'base', 0)
+                """, (receipt_id, adj.item_id, adj.diff))
+
+        conn.cursor.connection.commit()
+        return {"success": True}
+    except Exception as e:
+        conn.cursor.connection.rollback()
+        logger.error(f"Lỗi kiểm kho: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.cursor.close()
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
