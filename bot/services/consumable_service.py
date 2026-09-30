@@ -152,7 +152,7 @@ def get_employee_consumable_summary(employee_id: int, year: int, month: int) -> 
             exc = conn.execute(
                 """SELECT unit_price FROM consumable_price_exceptions 
                    WHERE price_id = ? AND employee_id = ?""",
-                (price["rowid"] if hasattr(price, 'rowid') else 0, employee_id)
+                (price["id"], employee_id)
             ).fetchone()
             if exc:
                 price_exception = exc["unit_price"]

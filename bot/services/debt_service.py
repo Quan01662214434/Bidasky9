@@ -268,7 +268,7 @@ def get_active_debts(limit: int = None) -> List[dict]:
         JOIN customers c ON dr.customer_id = c.id
         WHERE dr.status IN ('active', 'partial', 'overdue')
         ORDER BY 
-            CASE WHEN dr.due_date IS NOT NULL AND dr.due_date < date('now') THEN 0 ELSE 1 END,
+            CASE WHEN dr.due_date IS NOT NULL AND dr.due_date < CURRENT_DATE THEN 0 ELSE 1 END,
             dr.due_date ASC NULLS LAST,
             dr.created_at DESC
     """
@@ -294,7 +294,7 @@ def get_debt_summary() -> dict:
         """SELECT COUNT(*) as cnt, COALESCE(SUM(remaining_debt), 0) as total
            FROM debt_records 
            WHERE status IN ('active', 'partial', 'overdue')
-           AND due_date IS NOT NULL AND due_date < date('now')"""
+           AND due_date IS NOT NULL AND due_date < CURRENT_DATE"""
     ).fetchone()
     
     missing_photo = conn.execute(

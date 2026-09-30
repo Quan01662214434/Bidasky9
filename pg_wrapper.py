@@ -9,6 +9,9 @@ class SQLiteToPostgresCursor:
         self.rowcount = 0
 
     def execute(self, sql, params=()):
+        if params is None:
+            params = ()
+        params = tuple(1 if p is True else 0 if p is False else p for p in params)
         # Replace ? with %s
         sql = sql.replace('?', '%s')
         
