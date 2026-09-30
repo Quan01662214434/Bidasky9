@@ -128,6 +128,7 @@ function loadPageData(page) {
         case 'cashflow': loadCashflow(); break;
         case 'debts':    loadDebts(); break;
         case 'inventory': loadInventory(); break;
+        case 'salary':    loadSalary(); break;
         case 'employees': loadEmployees(); break;
     }
 }
@@ -464,6 +465,8 @@ async function loadEmployees() {
                     ? '<span class="badge badge-neutral">Nghỉ</span>'
                     : '<span class="badge badge-danger">Ngưng</span>');
 
+            tr.style.cursor = 'pointer';
+            tr.onclick = () => openEmpModal(e.id);
             tr.innerHTML = `
                 <td><strong>${e.name}</strong></td>
                 <td>${roleLabels[e.role] || e.role}</td>
@@ -758,5 +761,121 @@ async function saveDebtPayment() {
     } finally {
         btn.disabled = false;
         btn.textContent = 'Xác nhận';
+    }
+}
+
+// ─── Salary Page ──────────
+
+async function loadSalary() {
+    const tbody = document.getElementById('salary-tbody');
+    tbody.innerHTML = '<tr><td colspan="5" class="state-loading">Đang tải...</td></tr>';
+    
+    // Auto fill month select if empty
+    const monthSelect = document.getElementById('salary-month-select');
+    if (monthSelect.options.length === 0) {
+        const now = new Date();
+        for (let i = 0; i < 6; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const mStr = d.toISOString().substring(0, 7); // YYYY-MM
+            monthSelect.options.add(new Option(mStr, mStr));
+        }
+    }
+    
+    const selectedMonth = monthSelect.value;
+    
+    try {
+        const data = await apiFetch(`/api/v2/salary?month=${selectedMonth}`);
+        if (!data.salaries || data.salaries.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="state-empty">Chưa có dữ liệu lương</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        data.salaries.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${s.name}</strong></td>
+                <td>${s.shift_count} ca (${s.total_hours.toFixed(1)}h)</td>
+                <td class="money">${fmtMoney(s.base_salary)}</td>
+                <td class="money money-neg">${fmtMoney(s.advance)}</td>
+                <td class="money money-pos" style="font-weight: 700;">${fmtMoney(s.net_salary)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="state-error">Lỗi tải dữ liệu</td></tr>`;
+    }
+}
+
+// ─── Employee Modal ──────────
+
+function openEmpModal(empId = null) {
+    const modal = document.getElementById('emp-modal');
+    modal.classList.add('active');
+    
+    document.getElementById('emp-modal-title').textContent = empId ? "Sửa nhân viên" : "Thêm nhân viên";
+    document.getElementById('emp-id').value = '';
+    document.getElementById('emp-name').value = '';
+    document.getElementById('emp-role').value = 'employee';
+    document.getElementById('emp-tele').value = '';
+    document.getElementById('emp-rate').value = '';
+    document.getElementById('emp-active').checked = true;
+    
+    if (empId) {
+        apiFetch('/api/v2/employees').then(data => {
+            const emp = data.employees.find(e => e.id == empId);
+            if (emp) {
+                document.getElementById('emp-id').value = emp.id;
+                document.getElementById('emp-name').value = emp.name;
+                document.getElementById('emp-role').value = emp.role;
+                document.getElementById('emp-tele').value = emp.id; // telegram_id is the id
+                document.getElementById('emp-rate').value = emp.rate || 0;
+                document.getElementById('emp-active').checked = emp.is_active === 1;
+            }
+        });
+    }
+}
+
+function closeEmpModal() {
+    document.getElementById('emp-modal').classList.remove('active');
+}
+
+async function saveEmp() {
+    const id = document.getElementById('emp-id').value;
+    const name = document.getElementById('emp-name').value.trim();
+    const role = document.getElementById('emp-role').value;
+    const tele = parseInt(document.getElementById('emp-tele').value.trim());
+    const rate = parseFloat(document.getElementById('emp-rate').value) || 0;
+    const isActive = document.getElementById('emp-active').checked ? 1 : 0;
+    
+    if (!name || isNaN(tele)) {
+        return alert("Vui lòng nhập Tên và Telegram ID hợp lệ");
+    }
+    
+    const payload = {
+        id: id ? parseInt(id) : null,
+        name: name,
+        role: role,
+        telegram_id: tele,
+        rate: rate,
+        is_active: isActive
+    };
+    
+    const btn = document.getElementById('btn-save-emp');
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+    
+    try {
+        await apiFetch('/api/v2/employees', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        closeEmpModal();
+        loadEmployees();
+    } catch (e) {
+        alert("Lỗi: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Lưu Nhân Viên';
     }
 }

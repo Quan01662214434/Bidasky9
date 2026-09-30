@@ -296,8 +296,9 @@
 
             <!-- ─── Page: Employees ─── -->
             <section class="page" id="page-employees">
-                <header class="page-header">
+                <header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
                     <h1 class="page-title">Nhân viên</h1>
+                    <button class="btn btn-primary btn-sm" onclick="openEmpModal()">+ Thêm nhân viên</button>
                 </header>
                 <div class="card">
                     <div class="card-body table-wrap">
@@ -346,8 +347,33 @@
                 </div>
             </section>
             <section class="page" id="page-salary">
-                <header class="page-header"><h1 class="page-title">Bảng lương</h1></header>
-                <div class="card"><div class="card-body"><p class="state-empty">Chức năng đang phát triển...</p></div></div>
+                <header class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h1 class="page-title">Bảng lương</h1>
+                    <select id="salary-month-select" class="form-control" style="width: auto; padding: 6px 12px;" onchange="loadSalary()">
+                        <!-- Auto generated -->
+                    </select>
+                </header>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Chi tiết lương tháng</h2>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nhân viên</th>
+                                    <th>Ca làm</th>
+                                    <th>Lương CB</th>
+                                    <th>Tạm ứng</th>
+                                    <th>Thực nhận</th>
+                                </tr>
+                            </thead>
+                            <tbody id="salary-tbody">
+                                <tr><td colspan="5" class="state-loading">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </section>
             <section class="page" id="page-settings">
                 <header class="page-header"><h1 class="page-title">Cài đặt</h1></header>
@@ -536,6 +562,49 @@
             <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
                 <button class="btn btn-secondary" onclick="closeDebtModal()">Hủy</button>
                 <button class="btn btn-primary" id="btn-save-debt" onclick="saveDebtPayment()">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nhân Viên -->
+    <div class="modal" id="emp-modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 class="modal-title" id="emp-modal-title">Thêm nhân viên</h2>
+                <button class="modal-close" onclick="closeEmpModal()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="emp-id">
+                <div class="form-group">
+                    <label>Tên hiển thị</label>
+                    <input type="text" id="emp-name" class="form-control" placeholder="Tên nhân viên">
+                </div>
+                <div class="form-group">
+                    <label>Vai trò</label>
+                    <select id="emp-role" class="form-control">
+                        <option value="employee">Nhân viên</option>
+                        <option value="owner">Chủ quán (Toàn quyền)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Telegram ID (Để dùng Bot)</label>
+                    <input type="text" id="emp-tele" class="form-control" placeholder="Ví dụ: 123456789">
+                    <small style="color:var(--text-muted); font-size:11px;">Mỗi tài khoản Telegram có 1 ID riêng biệt.</small>
+                </div>
+                <div class="form-group">
+                    <label>Mức lương (VNĐ/Giờ)</label>
+                    <input type="number" id="emp-rate" class="form-control" placeholder="20000">
+                </div>
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="emp-active" checked style="width: 18px; height: 18px;">
+                    <label for="emp-active" style="margin: 0; cursor: pointer;">Đang làm việc</label>
+                </div>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeEmpModal()">Hủy</button>
+                <button class="btn btn-primary" id="btn-save-emp" onclick="saveEmp()">Lưu Nhân Viên</button>
             </div>
         </div>
     </div>

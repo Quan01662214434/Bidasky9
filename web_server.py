@@ -553,7 +553,8 @@ async def api_employees():
         rows = conn.execute("""
             SELECT u.telegram_id, u.display_name, u.role, u.phone, u.is_active,
                    u.created_at,
-                   a.status as att_status, a.checkin_time, a.checkout_time
+                   a.status as att_status, a.checkin_time, a.checkout_time,
+                   (SELECT hourly_rate FROM wage_rates w WHERE w.employee_id = u.telegram_id ORDER BY w.effective_from DESC LIMIT 1) as hourly_rate
             FROM users u
             LEFT JOIN (
                 SELECT employee_id, status, checkin_time, checkout_time
@@ -575,12 +576,117 @@ async def api_employees():
                 "is_working": r["att_status"] == "checked_in",
                 "checkin_time": r["checkin_time"],
                 "created_at": r["created_at"],
+                "rate": r["hourly_rate"] or 0
             })
 
         return {"employees": employees}
     finally:
         conn.close()
 
+class EmployeePayload(BaseModel):
+    id: Optional[int] = None
+    name: str
+    role: str
+    telegram_id: int
+    rate: float
+    is_active: int
+
+@app.post("/api/v2/employees")
+async def api_save_employee(payload: EmployeePayload, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        now = vn_now().isoformat()
+        
+        if payload.id:
+            conn.execute("""
+                UPDATE users 
+                SET display_name = %s, role = %s, telegram_id = %s, is_active = %s
+                WHERE telegram_id = %s
+            """, (payload.name, payload.role, payload.telegram_id, payload.is_active, payload.id))
+            
+            if payload.rate > 0:
+                conn.execute("""
+                    INSERT INTO wage_rates (employee_id, hourly_rate, effective_from, created_at, created_by)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (payload.telegram_id, payload.rate, now, now, str(owner_id)))
+        else:
+            conn.execute("""
+                INSERT INTO users (telegram_id, display_name, role, is_active, created_at, created_by)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (payload.telegram_id, payload.name, payload.role, payload.is_active, now, str(owner_id)))
+            
+            if payload.rate > 0:
+                conn.execute("""
+                    INSERT INTO wage_rates (employee_id, hourly_rate, effective_from, created_at, created_by)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (payload.telegram_id, payload.rate, now, now, str(owner_id)))
+                
+        conn.cursor.connection.commit()
+        return {"success": True}
+    except Exception as e:
+        conn.cursor.connection.rollback()
+        logger.error(f"Lỗi lưu nhân viên: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.cursor.close()
+
+
+@app.get("/api/v2/salary")
+async def api_salary(month: str = None, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        if not month:
+            month = vn_now().strftime("%Y-%m")
+            
+        # Get employees
+        employees = conn.execute("SELECT telegram_id, display_name FROM users WHERE role IN ('employee', 'owner')").fetchall()
+        
+        salary_data = []
+        for emp in employees:
+            emp_id = emp["telegram_id"]
+            
+            # Count shifts
+            shifts = conn.execute("""
+                SELECT COUNT(*) as shift_count, SUM(duration_hours) as total_hours 
+                FROM attendance_sessions 
+                WHERE employee_id = %s AND status = 'checked_out' AND checkin_time LIKE %s
+            """, (emp_id, month + "%")).fetchone()
+            
+            # Get latest rate before or during this month
+            rate_row = conn.execute("""
+                SELECT hourly_rate FROM wage_rates 
+                WHERE employee_id = %s AND effective_from <= %s 
+                ORDER BY effective_from DESC LIMIT 1
+            """, (emp_id, month + "-31")).fetchone()
+            rate = rate_row["hourly_rate"] if rate_row else 0
+            
+            # Get advances (tạm ứng)
+            advances = conn.execute("""
+                SELECT SUM(amount) as total_advance 
+                FROM salary_advances 
+                WHERE employee_id = %s AND status = 'approved' AND request_date LIKE %s
+            """, (emp_id, month + "%")).fetchone()
+            advance = advances["total_advance"] or 0
+            
+            # Gross salary based on exact wages from attendance might be better, 
+            # but for simplicity we calculate based on total_hours * rate
+            total_hours = shifts["total_hours"] or 0
+            gross_salary = total_hours * rate
+            net_salary = gross_salary - advance
+            
+            salary_data.append({
+                "employee_id": emp_id,
+                "name": emp["display_name"],
+                "shift_count": shifts["shift_count"],
+                "total_hours": total_hours,
+                "base_salary": gross_salary,
+                "advance": advance,
+                "net_salary": net_salary
+            })
+            
+        return {"month": month, "salaries": salary_data}
+    finally:
+        conn.cursor.close()
 
 # ─── API: Inventory ──────────────────────────────────────────
 
