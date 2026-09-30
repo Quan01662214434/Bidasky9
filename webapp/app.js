@@ -125,6 +125,7 @@ function loadPageData(page) {
     switch (page) {
         case 'overview': loadOverview(); break;
         case 'shifts':   loadCashShifts(); break;
+        case 'cashflow': loadCashflow(); break;
         case 'debts':    loadDebts(); break;
         case 'inventory': loadInventory(); break;
         case 'employees': loadEmployees(); break;
@@ -385,6 +386,8 @@ async function loadDebts() {
             const statusCls = d.is_overdue ? 'badge-danger' : 'badge-warning';
             const statusLabel = d.is_overdue ? 'Quá hạn' : (d.status === 'partial' ? 'Trả một phần' : 'Đang nợ');
 
+            tr.style.cursor = 'pointer';
+            tr.onclick = () => openDebtModal(d.id, d.customer, d.remaining);
             tr.innerHTML = `
                 <td>
                     <strong>${d.customer}</strong>
@@ -422,6 +425,8 @@ async function loadInventory() {
                 ? '<span class="badge badge-danger">Tồn thấp</span>'
                 : '<span class="badge badge-success">Bình thường</span>';
 
+            tr.style.cursor = 'pointer';
+            tr.onclick = () => openItemModal(item.id);
             tr.innerHTML = `
                 <td><strong>${item.name}</strong></td>
                 <td>${item.category || '—'}</td>
@@ -559,3 +564,199 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load
     loadOverview();
 });
+
+
+// ─── Item Management Modal ──────────
+
+function openItemModal(itemId = null) {
+    const modal = document.getElementById('item-modal');
+    modal.classList.add('active');
+    document.getElementById('item-id').value = '';
+    document.getElementById('item-name').value = '';
+    document.getElementById('item-category').value = 'drink';
+    document.getElementById('item-base-unit').value = '';
+    document.getElementById('item-low-stock').value = 10;
+    document.getElementById('item-pack-unit').value = '';
+    document.getElementById('item-pack-size').value = '';
+    document.getElementById('item-active').checked = true;
+    
+    document.getElementById('item-modal-title').textContent = itemId ? "Sửa hàng hóa" : "Thêm hàng hóa";
+    
+    if (itemId) {
+        apiFetch('/api/v2/inventory').then(data => {
+            const item = data.items.find(i => i.id == itemId);
+            if(item) {
+                document.getElementById('item-id').value = item.id;
+                document.getElementById('item-name').value = item.name;
+                document.getElementById('item-category').value = item.category;
+                document.getElementById('item-base-unit').value = item.base_unit;
+                document.getElementById('item-low-stock').value = item.low_stock_threshold;
+                document.getElementById('item-pack-unit').value = item.pack_unit || '';
+                document.getElementById('item-pack-size').value = item.pack_size || '';
+                document.getElementById('item-active').checked = (item.is_active === 1);
+            }
+        });
+    }
+}
+
+function closeItemModal() {
+    document.getElementById('item-modal').classList.remove('active');
+}
+
+async function saveItem() {
+    const id = document.getElementById('item-id').value;
+    const payload = {
+        id: id ? parseInt(id) : null,
+        name: document.getElementById('item-name').value.trim(),
+        category: document.getElementById('item-category').value,
+        base_unit: document.getElementById('item-base-unit').value.trim(),
+        pack_unit: document.getElementById('item-pack-unit').value.trim() || null,
+        pack_size: parseInt(document.getElementById('item-pack-size').value) || null,
+        low_stock_threshold: parseInt(document.getElementById('item-low-stock').value) || 0,
+        is_active: document.getElementById('item-active').checked ? 1 : 0
+    };
+    
+    if (!payload.name || !payload.base_unit) return alert("Vui lòng nhập Tên và Đơn vị cơ bản");
+    
+    const btn = document.getElementById('btn-save-item');
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+    
+    try {
+        await apiFetch('/api/v2/inventory/item', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        closeItemModal();
+        loadInventory(); // Reload table
+    } catch (e) {
+        alert("Lỗi: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Lưu';
+    }
+}
+
+// ─── Cashflow Page & Transaction Modal ──────────
+
+async function loadCashflow() {
+    const tbody = document.getElementById('cashflow-tbody');
+    tbody.innerHTML = '<tr><td colspan="4" class="state-loading">Đang tải...</td></tr>';
+
+    try {
+        const dateParam = currentDate ? `?date=${currentDate}` : '';
+        const data = await apiFetch('/api/v2/transactions' + dateParam);
+        if (!data.transactions || data.transactions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="state-empty">Chưa có giao dịch nào</td></tr>';
+            return;
+        }
+        tbody.innerHTML = '';
+        data.transactions.forEach(tx => {
+            const tr = document.createElement('tr');
+            const typeLabel = tx.type === 'income' ? '<span class="badge badge-success">Thu</span>' : '<span class="badge badge-danger">Chi</span>';
+            const moneyCls = tx.type === 'income' ? 'money-pos' : 'money-neg';
+            const sign = tx.type === 'income' ? '+' : '-';
+            
+            tr.innerHTML = `
+                <td>${tx.time}</td>
+                <td>${typeLabel}</td>
+                <td class="money ${moneyCls}">${sign}${fmtMoney(tx.amount)}</td>
+                <td>${tx.description}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="state-error">Lỗi tải dữ liệu<br><button class="retry-btn" onclick="loadCashflow()">Thử lại</button></td></tr>`;
+    }
+}
+
+function openTxnModal() {
+    const modal = document.getElementById('txn-modal');
+    modal.classList.add('active');
+    document.getElementById('txn-id').value = '';
+    document.getElementById('txn-type').value = 'income';
+    document.getElementById('txn-amount').value = '';
+    document.getElementById('txn-desc').value = '';
+    document.getElementById('txn-method').value = 'cash';
+}
+
+function closeTxnModal() {
+    document.getElementById('txn-modal').classList.remove('active');
+}
+
+async function saveTxn() {
+    const payload = {
+        type: document.getElementById('txn-type').value,
+        amount: parseFloat(document.getElementById('txn-amount').value) || 0,
+        description: document.getElementById('txn-desc').value.trim(),
+        method: document.getElementById('txn-method').value
+    };
+    
+    if (payload.amount <= 0 || !payload.description) {
+        return alert("Vui lòng nhập Số tiền và Lý do hợp lệ");
+    }
+    
+    const btn = document.getElementById('btn-save-txn');
+    btn.disabled = true;
+    btn.textContent = 'Đang lưu...';
+    
+    try {
+        await apiFetch('/api/v2/transactions', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+        closeTxnModal();
+        if (currentPage === 'cashflow') loadCashflow();
+        loadOverview();
+    } catch (e) {
+        alert("Lỗi: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Lưu Giao Dịch';
+    }
+}
+
+// ─── Debt Payment Modal ──────────
+
+function openDebtModal(id, customerName, remaining) {
+    const modal = document.getElementById('debt-modal');
+    modal.classList.add('active');
+    
+    document.getElementById('debt-id').value = id;
+    document.getElementById('debt-customer-name').textContent = customerName;
+    document.getElementById('debt-remaining').textContent = fmtMoney(remaining);
+    
+    document.getElementById('debt-pay-amount').value = remaining;
+    document.getElementById('debt-method').value = 'cash';
+}
+
+function closeDebtModal() {
+    document.getElementById('debt-modal').classList.remove('active');
+}
+
+async function saveDebtPayment() {
+    const debtId = document.getElementById('debt-id').value;
+    const amount = parseFloat(document.getElementById('debt-pay-amount').value) || 0;
+    const method = document.getElementById('debt-method').value;
+    
+    if (amount <= 0) return alert("Vui lòng nhập số tiền hợp lệ");
+    
+    const btn = document.getElementById('btn-save-debt');
+    btn.disabled = true;
+    btn.textContent = 'Đang xử lý...';
+    
+    try {
+        await apiFetch('/api/v2/debts/pay', {
+            method: 'POST',
+            body: JSON.stringify({ debt_id: parseInt(debtId), amount: amount, method: method })
+        });
+        closeDebtModal();
+        loadDebts();
+        loadOverview();
+    } catch (e) {
+        alert("Lỗi: " + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Xác nhận';
+    }
+}

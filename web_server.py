@@ -619,12 +619,15 @@ async def api_inventory():
                 "name": r["name"],
                 "category": r["category"],
                 "unit": r["base_unit"],
+                "base_unit": r["base_unit"],
                 "pack_unit": r["pack_unit"],
                 "pack_size": r["pack_size"],
                 "stock": r["current_stock"],
                 "threshold": r["low_stock_threshold"],
+                "low_stock_threshold": r["low_stock_threshold"],
                 "is_low": is_low,
                 "price": r["last_import_price"],
+                "is_active": r["is_active"]
             })
 
         return {"items": items}
@@ -909,6 +912,170 @@ async def api_inventory_check(payload: InventoryCheckPayload, auth: bool = Depen
     except Exception as e:
         conn.cursor.connection.rollback()
         logger.error(f"Lỗi kiểm kho: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.cursor.close()
+
+class SaveItemPayload(BaseModel):
+    id: Optional[int] = None
+    name: str
+    category: str
+    base_unit: str
+    pack_unit: Optional[str] = None
+    pack_size: Optional[int] = None
+    low_stock_threshold: int = 10
+    is_active: int = 1
+
+@app.post("/api/v2/inventory/item")
+async def api_save_inventory_item(payload: SaveItemPayload, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        if payload.id:
+            # Update
+            conn.execute("""
+                UPDATE inventory_items 
+                SET name = %s, category = %s, base_unit = %s, pack_unit = %s, 
+                    pack_size = %s, low_stock_threshold = %s, is_active = %s
+                WHERE id = %s
+            """, (payload.name, payload.category, payload.base_unit, payload.pack_unit, 
+                  payload.pack_size, payload.low_stock_threshold, payload.is_active, payload.id))
+        else:
+            # Insert
+            conn.execute("""
+                INSERT INTO inventory_items (name, category, base_unit, pack_unit, pack_size, low_stock_threshold, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            """, (payload.name, payload.category, payload.base_unit, payload.pack_unit, 
+                  payload.pack_size, payload.low_stock_threshold, payload.is_active))
+        
+        conn.cursor.connection.commit()
+        return {"success": True}
+    except Exception as e:
+        conn.cursor.connection.rollback()
+        logger.error(f"Lỗi lưu mặt hàng: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.cursor.close()
+
+class TransactionPayload(BaseModel):
+    type: str # 'income' or 'expense'
+    amount: float
+    description: str
+    method: str # 'cash' or 'bank_transfer'
+
+@app.get("/api/v2/transactions")
+async def api_get_transactions(date: str = None, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        target_date = date if date else vn_now().strftime("%Y-%m-%d")
+        
+        # Need to parse date strictly if passing to SQLite/Postgres.
+        # But SQLite stores timestamp as ISO 'YYYY-MM-DDTHH:MM:SS'. We can use LIKE.
+        rows = conn.execute("""
+            SELECT id, type, amount, description, created_at, cash_shift_id, status 
+            FROM transactions 
+            WHERE created_at LIKE %s 
+            ORDER BY created_at DESC
+        """, (target_date + "%",)).fetchall()
+        
+        txs = []
+        for r in rows:
+            # format time
+            dt_str = r["created_at"]
+            time_str = dt_str.split('T')[1][:5] if 'T' in dt_str else dt_str.split(' ')[1][:5]
+            txs.append({
+                "id": r["id"],
+                "type": r["type"],
+                "amount": r["amount"],
+                "description": r["description"],
+                "time": time_str,
+                "status": r["status"]
+            })
+            
+        return {"transactions": txs}
+    finally:
+        conn.cursor.close()
+
+@app.post("/api/v2/transactions")
+async def api_post_transactions(payload: TransactionPayload, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        now = vn_now()
+        shift_id = None
+        if payload.method == 'cash':
+            shift_row = conn.execute("SELECT id FROM cash_shifts WHERE status = 'open' ORDER BY opened_at DESC LIMIT 1").fetchone()
+            if shift_row:
+                shift_id = shift_row["id"]
+                
+        conn.execute("""
+            INSERT INTO transactions (type, amount, description, status, recorded_by, created_at, cash_shift_id)
+            VALUES (%s, %s, %s, 'completed', %s, %s, %s)
+        """, (payload.type, payload.amount, payload.description, str(owner_id), now.isoformat(), shift_id))
+        
+        conn.cursor.connection.commit()
+        return {"success": True}
+    except Exception as e:
+        conn.cursor.connection.rollback()
+        logger.error(f"Lỗi tạo giao dịch: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.cursor.close()
+
+class DebtPayPayload(BaseModel):
+    debt_id: int
+    amount: float
+    method: str
+
+@app.post("/api/v2/debts/pay")
+async def api_debts_pay(payload: DebtPayPayload, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        now = vn_now().isoformat()
+        
+        # 1. Get debt info
+        debt = conn.execute("SELECT remaining_debt, customer_id, bill_code FROM debt_records WHERE id = %s", (payload.debt_id,)).fetchone()
+        if not debt:
+            raise HTTPException(status_code=404, detail="Không tìm thấy khoản nợ")
+            
+        remaining = debt["remaining_debt"]
+        if payload.amount > remaining:
+            raise HTTPException(status_code=400, detail="Số tiền trả lớn hơn số còn nợ")
+            
+        new_remaining = remaining - payload.amount
+        new_status = 'paid' if new_remaining == 0 else 'partial'
+        
+        # 2. Update debt record
+        conn.execute("""
+            UPDATE debt_records 
+            SET remaining_debt = %s, status = %s 
+            WHERE id = %s
+        """, (new_remaining, new_status, payload.debt_id))
+        
+        # 3. Create payment record
+        conn.execute("""
+            INSERT INTO debt_payments (debt_id, amount_paid, payment_date, recorded_by)
+            VALUES (%s, %s, %s, %s)
+        """, (payload.debt_id, payload.amount, vn_now().strftime("%Y-%m-%d"), str(owner_id)))
+        
+        # 4. If method is cash, create transaction
+        if payload.method == 'cash':
+            shift_id = None
+            shift_row = conn.execute("SELECT id FROM cash_shifts WHERE status = 'open' ORDER BY opened_at DESC LIMIT 1").fetchone()
+            if shift_row:
+                shift_id = shift_row["id"]
+                
+            customer_row = conn.execute("SELECT name FROM customers WHERE id = %s", (debt["customer_id"],)).fetchone()
+            customer_name = customer_row["name"] if customer_row else "Khách hàng"
+            
+            conn.execute("""
+                INSERT INTO transactions (type, amount, description, status, recorded_by, created_at, cash_shift_id, reference_type, reference_id)
+                VALUES ('income', %s, %s, 'completed', %s, %s, %s, 'debt_payment', %s)
+            """, (payload.amount, f"Thu nợ: {customer_name} (Bill {debt['bill_code']})", str(owner_id), now, shift_id, payload.debt_id))
+            
+        conn.cursor.connection.commit()
+        return {"success": True, "new_remaining": new_remaining, "status": new_status}
+    except Exception as e:
+        conn.cursor.connection.rollback()
+        logger.error(f"Lỗi trả nợ: {e}")
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         conn.cursor.close()
