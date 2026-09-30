@@ -25,8 +25,6 @@ def _build_employee_menu() -> InlineKeyboardMarkup:
         # Ca làm & Chấm công
         [InlineKeyboardButton("📅 Lịch làm", callback_data=f"{CB.SHIFT_VIEW}:my"),
          InlineKeyboardButton("✍️ Đăng ký ca", callback_data=f"{CB.SHIFT_REG}:start")],
-        [InlineKeyboardButton("✅ Vào làm", callback_data=f"{CB.ATT_CHECKIN}:start"),
-         InlineKeyboardButton("🚪 Ra về", callback_data=f"{CB.ATT_CHECKOUT}:do")],
         [InlineKeyboardButton("📊 Công của tôi", callback_data=f"{CB.ATT_MY_LOG}:view"),
          InlineKeyboardButton("📝 Sửa công", callback_data=f"{CB.ATT_ADJUST_REQ}:start")],
         
@@ -81,9 +79,6 @@ def _build_owner_menu() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("🏦 Nhận ca quỹ", callback_data=f"{CB.CS_OPEN}:start"),
          InlineKeyboardButton("📊 Kết ca", callback_data=f"{CB.CS_CLOSE}:start")],
         
-        # Chấm công (chủ cũng check-in nếu làm)
-        [InlineKeyboardButton("✅ Vào làm", callback_data=f"{CB.ATT_CHECKIN}:start"),
-         InlineKeyboardButton("🚪 Ra về", callback_data=f"{CB.ATT_CHECKOUT}:do")],
     ])
     return InlineKeyboardMarkup(keyboard)
 
