@@ -1,7 +1,7 @@
 #!/bin/bash
-# Khởi động Bot Telegram trong background
-python main.py &
+# Bot Telegram chạy TRONG web server (webhook mode)
+# Không cần process riêng nữa
 
-# Khởi động Web Server ở foreground (Render cần tiến trình này để biết app đang chạy)
-# Sử dụng port do Render cung cấp qua biến môi trường $PORT
+# Khởi động Web Server (bao gồm bot webhook)
+# Render cần tiến trình này để biết app đang chạy
 uvicorn web_server:app --host 0.0.0.0 --port ${PORT:-8000}

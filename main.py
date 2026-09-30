@@ -97,7 +97,7 @@ def main():
     
     from bot.models.database import get_connection
     def ensure_default_shifts():
-        conn = get_connection()
+         conn = get_connection()
         count = conn.execute("SELECT COUNT(*) as c FROM shift_templates").fetchone()["c"]
         if count == 0:
             from bot.services.shift_service import create_shift_template
@@ -120,6 +120,22 @@ def main():
         .post_init(post_init)
         .build()
     )
+    
+    # ─── Global Error Handler ───
+    # Bắt MỌI lỗi từ handler, log lại nhưng KHÔNG crash bot
+    async def error_handler(update, context):
+        """Log lỗi nhưng giữ bot chạy."""
+        logger.error("Exception trong handler: %s", context.error, exc_info=context.error)
+        # Thử thông báo user nếu có thể
+        try:
+            if update and update.effective_message:
+                await update.effective_message.reply_text(
+                    "⚠️ Đã xảy ra lỗi. Vui lòng thử lại hoặc bấm /start."
+                )
+        except Exception:
+            pass
+    
+    application.add_error_handler(error_handler)
     
     # Register handlers theo thứ tự ưu tiên
     # ConversationHandlers phải trước CallbackQueryHandlers đơn lẻ
@@ -145,8 +161,12 @@ def main():
     
     # Start polling
     logger.info("Bắt đầu polling...")
-    application.run_polling(drop_pending_updates=True)
+    application.run_polling(
+        drop_pending_updates=True,
+        allowed_updates=["message", "callback_query"],
+    )
 
 
 if __name__ == "__main__":
     main()
+

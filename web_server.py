@@ -48,6 +48,103 @@ def get_db():
     return conn
 
 
+# ─── Telegram Bot Webhook Integration ────────────────────────
+# Bot chạy TRONG web server, không cần process riêng
+from telegram import Update
+from fastapi import Request
+
+bot_application = None  # Will be initialized on startup
+
+@app.on_event("startup")
+async def startup_event():
+    """Khởi tạo bot và đăng ký webhook khi server start."""
+    global bot_application
+    
+    logging.basicConfig(
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        level=logging.INFO,
+    )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    
+    try:
+        from bot_setup import create_bot_application, setup_periodic_jobs
+        
+        bot_application = create_bot_application()
+        
+        # Initialize and start (starts job queue for periodic tasks)
+        await bot_application.initialize()
+        await bot_application.start()
+        
+        # Setup periodic jobs (notifications, late check-ins, etc.)
+        await setup_periodic_jobs(bot_application)
+        
+        # Set webhook URL
+        # Render provides RENDER_EXTERNAL_URL automatically
+        base_url = os.getenv("RENDER_EXTERNAL_URL", os.getenv("WEBAPP_URL", ""))
+        bot_token = os.getenv("BOT_TOKEN", "")
+        
+        if base_url and bot_token:
+            webhook_url = f"{base_url}/telegram-webhook/{bot_token}"
+            await bot_application.bot.set_webhook(
+                url=webhook_url,
+                allowed_updates=["message", "callback_query"],
+                drop_pending_updates=False,
+            )
+            logger.info("Webhook đã đăng ký: %s", webhook_url.replace(bot_token, "***"))
+        else:
+            logger.warning("Không tìm thấy RENDER_EXTERNAL_URL hoặc BOT_TOKEN, webhook chưa được đăng ký")
+        
+        logger.info("=== BOT ĐÃ SẴN SÀNG (WEBHOOK MODE) ===")
+        
+    except Exception as e:
+        logger.error("Lỗi khởi tạo bot: %s", e, exc_info=True)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup khi server shutdown."""
+    global bot_application
+    if bot_application:
+        try:
+            await bot_application.stop()
+            await bot_application.shutdown()
+        except Exception:
+            pass
+
+
+@app.post("/telegram-webhook/{token}")
+async def telegram_webhook(token: str, request: Request):
+    """Endpoint nhận update từ Telegram webhook."""
+    bot_token = os.getenv("BOT_TOKEN", "")
+    if token != bot_token:
+        raise HTTPException(status_code=403, detail="Invalid token")
+    
+    if not bot_application:
+        raise HTTPException(status_code=503, detail="Bot not initialized")
+    
+    try:
+        data = await request.json()
+        update = Update.de_json(data, bot_application.bot)
+        await bot_application.process_update(update)
+    except Exception as e:
+        logger.error("Webhook processing error: %s", e, exc_info=True)
+    
+    # Always return 200 to Telegram to prevent retries
+    return {"ok": True}
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "ok",
+        "bot_initialized": bot_application is not None,
+        "mode": "webhook",
+    }
+
+
+
 def vn_now():
     return datetime.now(VN_TZ)
 
