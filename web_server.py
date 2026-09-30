@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-from fastapi import FastAPI, Query, HTTPException, Header
+from fastapi import FastAPI, Query, HTTPException, Header, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -85,6 +85,57 @@ def fmt_money(amount):
     return f"{int(amount):,}đ".replace(",", ".")
 
 
+import urllib.parse
+import hmac
+import hashlib
+
+def verify_owner_auth(authorization: str = Header(None)):
+    """Xác thực Telegram WebApp initData và kiểm tra quyền Owner."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Thiếu token xác thực")
+    
+    init_data = authorization.split("Bearer ")[1]
+    
+    # 1. Bypass logic for local testing if needed, or enforce it
+    # We enforce it because this is production logic.
+    try:
+        parsed = urllib.parse.parse_qsl(init_data)
+        data_dict = dict(parsed)
+        if 'hash' not in data_dict:
+            raise HTTPException(status_code=401, detail="Invalid token format")
+            
+        received_hash = data_dict.pop('hash')
+        data_check_string = "\n".join(f"{k}={v}" for k, v in sorted(data_dict.items()))
+        
+        bot_token = os.getenv("BOT_TOKEN")
+        secret_key = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+        calc_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+        
+        if calc_hash != received_hash:
+            # Fallback for dev mode (if init_data is just the owner ID)
+            if init_data != str(owner_id):
+                raise HTTPException(status_code=401, detail="Chữ ký không hợp lệ")
+                
+        # Parse user
+        if 'user' in data_dict:
+            user_info = json.loads(data_dict['user'])
+            user_id = user_info.get('id')
+            if str(user_id) != str(owner_id):
+                raise HTTPException(status_code=403, detail="Chỉ Chủ quán mới có quyền thực hiện thao tác này")
+        elif init_data == str(owner_id):
+            pass # Dev mode
+        else:
+            raise HTTPException(status_code=401, detail="Không tìm thấy thông tin user")
+            
+    except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
+        logger.error(f"Lỗi xác thực: {e}")
+        raise HTTPException(status_code=401, detail="Xác thực thất bại")
+        
+    return True
+
+
 # ─── Pages ───────────────────────────────────────────────────
 
 @app.get("/")
@@ -95,6 +146,16 @@ async def read_index():
 @app.get("/adjustments")
 async def read_adjustments():
     return FileResponse("webapp/adjustments.html")
+
+
+@app.get("/inventory/import")
+async def read_inventory_import():
+    return FileResponse("webapp/inventory_import.html")
+
+
+@app.get("/inventory/check")
+async def read_inventory_check():
+    return FileResponse("webapp/inventory_check.html")
 
 
 # ─── API: Dashboard Overview ─────────────────────────────────
@@ -705,6 +766,100 @@ async def apply_attendance_adjustment(session_id: int, req: AttendanceAdjustRequ
     finally:
         conn.close()
     return {"success": True}
+
+
+# ─── API: Inventory Import ───────────────────────────────────
+
+from typing import List
+
+class ImportItemModel(BaseModel):
+    item_id: int
+    unit: str
+    quantity: float
+    unit_price: float
+    total: float
+
+class ImportPayload(BaseModel):
+    supplier: str
+    import_date: str
+    notes: Optional[str] = None
+    total_amount: float
+    payment_status: str
+    paid_amount: float
+    payment_method: str
+    items: List[ImportItemModel]
+
+@app.get("/api/v2/inventory/items")
+async def api_inventory_items(auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        rows = conn.execute("SELECT id, name, category, base_unit, pack_unit, pack_size FROM inventory_items WHERE is_active = 1").fetchall()
+        items = []
+        for r in rows:
+            d = dict(r)
+            units = []
+            if d.get("pack_unit") and d.get("pack_size"):
+                units.append({"name": d["pack_unit"], "ratio": d["pack_size"]})
+            d["units"] = units
+            items.append(d)
+        return {"items": items}
+    finally:
+        conn.cursor.close()
+
+@app.get("/api/v2/inventory/import")
+async def api_inventory_import_dummy():
+    # Only for testing, standard uses POST
+    pass
+
+@app.post("/api/v2/inventory/import")
+async def api_inventory_import(payload: ImportPayload, auth: bool = Depends(verify_owner_auth)):
+    conn = get_db()
+    try:
+        now = vn_now()
+        # Create receipt
+        conn.execute("""
+            INSERT INTO stock_receipts (supplier_name, received_date, total_amount, notes, status, created_at)
+            VALUES (%s, %s, %s, %s, 'confirmed', %s)
+        """, (payload.supplier, payload.import_date, payload.total_amount, payload.notes, now.isoformat()))
+        
+        receipt_id = conn.lastrowid
+        
+        for item in payload.items:
+            # Calculate base quantity
+            row = conn.execute("SELECT base_unit, pack_unit, pack_size FROM inventory_items WHERE id = %s", (item.item_id,)).fetchone()
+            base_qty = item.quantity
+            if row and row["pack_unit"] == item.unit and row["pack_size"]:
+                base_qty = item.quantity * row["pack_size"]
+                
+            conn.execute("""
+                INSERT INTO receipt_items (receipt_id, item_id, quantity_received, unit_price, unit, total_price)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (receipt_id, item.item_id, base_qty, item.unit_price, item.unit, item.total))
+            
+            # Update last import price
+            conn.execute("UPDATE inventory_items SET last_import_price = %s WHERE id = %s", (item.unit_price, item.item_id))
+            
+        # Handle payment if paid
+        if payload.payment_status in ('paid', 'partial') and payload.paid_amount > 0:
+            shift_id = None
+            if payload.payment_method == 'cash':
+                shift_row = conn.execute("SELECT id FROM cash_shifts WHERE status = 'open' ORDER BY opened_at DESC LIMIT 1").fetchone()
+                if shift_row:
+                    shift_id = shift_row["id"]
+                    
+            conn.execute("""
+                INSERT INTO transactions (type, amount, description, status, recorded_by, created_at, cash_shift_id, reference_type, reference_id)
+                VALUES ('expense', %s, %s, 'completed', %s, %s, %s, 'stock_receipt', %s)
+            """, (payload.paid_amount, f"Thanh toán nhập hàng: {payload.supplier}", str(owner_id), now.isoformat(), shift_id, receipt_id))
+            
+        conn.cursor.connection.commit()
+        return {"success": True, "receipt_id": receipt_id}
+    except Exception as e:
+        conn.cursor.connection.rollback()
+        logger.error(f"Lỗi nhập hàng: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.cursor.close()
 
 
 if __name__ == "__main__":

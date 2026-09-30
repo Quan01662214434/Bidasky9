@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nhập Hàng — BIDA SKY9</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        body { background: var(--bg-dark); }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 6px; color: var(--text-muted); }
+        .form-control { width: 100%; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-family: inherit; }
+        .form-control:focus { outline: none; border-color: var(--primary); }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+        .items-table th, .items-table td { padding: 8px; border-bottom: 1px solid var(--border); text-align: left; }
+        .items-table th { font-weight: 500; color: var(--text-muted); font-size: 13px; }
+        .items-table td input { width: 100%; padding: 6px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 4px; color: #fff; }
+        .btn-sm { padding: 6px 10px; font-size: 13px; }
+        .summary-box { background: var(--surface); border-radius: 8px; padding: 16px; margin-top: 16px; border: 1px solid var(--border); }
+        .summary-row { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .summary-total { font-size: 18px; font-weight: 700; color: var(--primary); }
+        .page-header { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+        .back-btn { background: none; border: none; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; padding: 4px; }
+        .item-select { min-width: 150px; }
+        select.form-control option { background: var(--surface); color: var(--text-primary); }
+    </style>
+</head>
+<body>
+    <div class="app-shell" style="padding: 16px; max-width: 800px; margin: 0 auto; display: block;">
+        <header class="page-header">
+            <button class="back-btn" onclick="window.history.back()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M15 18l-6-6 6-6"/></svg>
+            </button>
+            <h1 class="page-title" style="margin: 0;">Phiếu Nhập Hàng Mới</h1>
+        </header>
+
+        <div class="card" style="margin-bottom: 16px;">
+            <div class="card-body">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Nhà cung cấp</label>
+                        <input type="text" id="supplier" class="form-control" placeholder="Tên nhà cung cấp...">
+                    </div>
+                    <div class="form-group">
+                        <label>Ngày nhập</label>
+                        <input type="date" id="import-date" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Ghi chú</label>
+                    <input type="text" id="notes" class="form-control" placeholder="Ghi chú thêm...">
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom: 16px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 class="card-title">Chi tiết hàng hóa</h2>
+                <button class="btn btn-secondary btn-sm" onclick="addItemRow()">+ Thêm món</button>
+            </div>
+            <div class="card-body" style="overflow-x: auto;">
+                <table class="items-table" id="items-table">
+                    <thead>
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th style="width: 80px;">ĐV</th>
+                            <th style="width: 80px;">SL</th>
+                            <th style="width: 120px;">Đơn giá</th>
+                            <th style="width: 100px;">Thành tiền</th>
+                            <th style="width: 40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-tbody">
+                        <!-- Rows will be added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div class="form-group">
+                    <label>Trạng thái thanh toán</label>
+                    <select id="payment-status" class="form-control" onchange="updatePaymentUI()">
+                        <option value="unpaid">Chưa thanh toán</option>
+                        <option value="partial">Thanh toán một phần</option>
+                        <option value="paid" selected>Đã thanh toán đủ</option>
+                    </select>
+                </div>
+                <div id="payment-details-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-group">
+                        <label>Số tiền trả</label>
+                        <input type="number" id="paid-amount" class="form-control" placeholder="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Nguồn tiền</label>
+                        <select id="payment-method" class="form-control">
+                            <option value="cash">Tiền mặt (Trừ quỹ)</option>
+                            <option value="transfer">Chuyển khoản (Không trừ quỹ)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="summary-box">
+                    <div class="summary-row">
+                        <span>Tổng số lượng:</span>
+                        <span id="sum-qty">0</span>
+                    </div>
+                    <div class="summary-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                        <span>TỔNG TIỀN:</span>
+                        <span class="summary-total" id="sum-total">0đ</span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 24px; display: flex; gap: 12px;">
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="window.history.back()">Hủy</button>
+                    <button class="btn btn-primary" style="flex: 2;" id="btn-submit" onclick="submitImport()">LƯU PHIẾU NHẬP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template for item row -->
+    <template id="item-row-template">
+        <tr class="item-row">
+            <td>
+                <select class="form-control item-select" onchange="onItemChange(this)"></select>
+            </td>
+            <td>
+                <select class="form-control unit-select" onchange="calculateRow(this)"></select>
+            </td>
+            <td>
+                <input type="number" class="item-qty" min="1" value="1" oninput="calculateRow(this)">
+            </td>
+            <td>
+                <input type="number" class="item-price" min="0" value="0" oninput="calculateRow(this)">
+            </td>
+            <td class="item-total-text" style="font-weight: 500;">0đ</td>
+            <td>
+                <button class="btn btn-secondary btn-sm" style="padding: 4px; color: #f87171; background: transparent; border: none;" onclick="removeRow(this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </td>
+        </tr>
+    </template>
+
+    <script src="/static/inventory_import.js"></script>
+</body>
+</html>

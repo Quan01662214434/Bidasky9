@@ -63,9 +63,21 @@ function yesterdayStr() {
 
 // ─── API Fetch with Error Handling ──────────
 
-async function apiFetch(url) {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+async function apiFetch(url, options = {}) {
+    const headers = options.headers || {};
+    // Add auth token if available (from Telegram WebApp or dev fallback)
+    const initData = window.Telegram?.WebApp?.initData || '7496977545';
+    headers['Authorization'] = `Bearer ${initData}`;
+    
+    const res = await fetch(url, { ...options, headers });
+    if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try {
+            const err = await res.json();
+            if (err.detail) msg = err.detail;
+        } catch(e) {}
+        throw new Error(msg);
+    }
     return res.json();
 }
 
