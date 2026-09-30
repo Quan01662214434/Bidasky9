@@ -50,10 +50,11 @@ def get_dashboard_today(employee_id: int, current_shift_id: int = None, filter_m
     
     query = """
         SELECT t.*, u.display_name as recorder_name,
-        d.customer_name as debt_customer
+        c.name as debt_customer
         FROM transactions t
         LEFT JOIN users u ON t.recorded_by = u.telegram_id
         LEFT JOIN debt_records d ON t.debt_record_id = d.id
+        LEFT JOIN customers c ON d.customer_id = c.id
         WHERE t.type IN ('bank_transfer', 'debt_collect_transfer')
         AND t.created_at >= ? AND t.created_at < ?
         AND (t.status = 'completed' OR t.status IS NULL)
@@ -97,11 +98,12 @@ def get_transaction_details(txn_id: int) -> dict:
     conn = get_connection()
     row = conn.execute("""
         SELECT t.*, u.display_name as recorder_name,
-        d.customer_name as debt_customer,
+        c.name as debt_customer,
         dp.photo_id as debt_photo_id, dp.payment_date
         FROM transactions t
         LEFT JOIN users u ON t.recorded_by = u.telegram_id
         LEFT JOIN debt_records d ON t.debt_record_id = d.id
+        LEFT JOIN customers c ON d.customer_id = c.id
         LEFT JOIN debt_payments dp ON t.debt_payment_id = dp.id
         WHERE t.id = ?
     """, (txn_id,)).fetchone()
