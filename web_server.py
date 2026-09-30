@@ -221,11 +221,13 @@ async def api_overview(date: Optional[str] = None):
         pending_items = []
 
         # 4a. Bàn giao chưa xác nhận
+        date_obj = datetime.strptime(date, "%Y-%m-%d")
+        min_date = (date_obj - timedelta(days=3)).strftime("%Y-%m-%d")
         handover = conn.execute("""
             SELECT COUNT(*) as cnt FROM cash_shifts
             WHERE status = 'closed' AND handover_confirmed_by IS NULL
-            AND shift_date >= date(?, '-3 days')
-        """, (date,)).fetchone()["cnt"]
+            AND shift_date >= %s
+        """, (min_date,)).fetchone()["cnt"]
         if handover > 0:
             pending_items.append({
                 "type": "handover", "count": handover,

@@ -16,7 +16,11 @@ class SQLiteToPostgresCursor:
         sql = sql.replace('?', '%s')
         
         # SQLite specific conversions at runtime just in case
-        sql = re.sub(r"date\('now'\)", "CURRENT_DATE", sql, flags=re.IGNORECASE)
+        sql = re.sub(r"date\('now'\)", "CURRENT_DATE::text", sql, flags=re.IGNORECASE)
+        sql = re.sub(r"CURRENT_DATE\b", "CURRENT_DATE::text", sql, flags=re.IGNORECASE)
+        # Because we might already have CURRENT_DATE in some sql, we replace it with CURRENT_DATE::text
+        # But wait, replacing CURRENT_DATE could result in CURRENT_DATE::text::text. Let's just fix the date('now') and also fix any literal CURRENT_DATE in the codebase.
+        sql = sql.replace("CURRENT_DATE::text::text", "CURRENT_DATE::text")
         sql = re.sub(r"\bIFNULL\b", "COALESCE", sql, flags=re.IGNORECASE)
         
         is_insert = sql.lstrip().upper().startswith("INSERT")
