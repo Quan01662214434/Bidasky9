@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bida Club - Điều chỉnh (Audit)</title>
+    <!-- Telegram WebApp JS -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .filter-bar {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .filter-bar input, .filter-bar select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: #e2e8f0;
+        }
+        .action-btn {
+            padding: 6px 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .action-btn:hover {
+            background: #2563eb;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #1e293b;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-header h2 { margin: 0; font-size: 1.2rem; }
+        .close-btn { cursor: pointer; font-size: 1.5rem; color: #94a3b8; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; color: #cbd5e1; font-size: 0.9rem; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 10px; border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.2); color: white;
+            box-sizing: border-box;
+        }
+        .submit-btn {
+            width: 100%; padding: 12px; background: #10b981; color: white;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+            margin-top: 10px;
+        }
+        .submit-btn:hover { background: #059669; }
+        
+        .preview-box {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            display: none;
+        }
+        .preview-box p { margin: 5px 0; font-size: 0.9rem; }
+        
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">🎱</div>
+                <h2>CUE CLUB</h2>
+            </div>
+            <nav class="menu">
+                <a href="/" class="menu-item">
+                    <span class="icon">📊</span>
+                    <span>Tổng quan</span>
+                </a>
+                <a href="/adjustments" class="menu-item active">
+                    <span class="icon">⚙️</span>
+                    <span>Điều chỉnh</span>
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="header">
+                <h1>Kiểm toán & Sửa sai</h1>
+            </header>
+
+            <div class="filter-bar">
+                <select id="filter-type">
+                    <option value="attendance">Giờ công (Attendance)</option>
+                    <option value="cash_shift">Ca quỹ (Cash Shift)</option>
+                </select>
+                <input type="date" id="filter-date">
+                <button class="action-btn" onclick="loadData()">Tải dữ liệu</button>
+            </div>
+
+            <section class="glass-panel">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr id="table-head">
+                                <!-- Dynamic headers -->
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <tr><td colspan="5" class="loading-text">Bấm "Tải dữ liệu" để xem...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">Sửa Giờ Công</h2>
+                <span class="close-btn" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="form-fields">
+                <!-- Dynamically injected -->
+            </div>
+            <div class="form-group">
+                <label>Lý do sửa đổi (Bắt buộc):</label>
+                <textarea id="edit-reason" rows="2" placeholder="Ví dụ: Nhân viên quên bấm nút checkout..."></textarea>
+            </div>
+            
+            <div class="preview-box" id="preview-box">
+                <!-- Preview domino effect -->
+            </div>
+            
+            <button class="action-btn" style="width: 100%; margin-bottom: 10px; background: #f59e0b;" onclick="previewChanges()">Xem trước (Preview)</button>
+            <button class="submit-btn" id="confirm-btn" style="display:none;" onclick="submitChanges()">XÁC NHẬN SỬA</button>
+        </div>
+    </div>
+
+    <script src="/static/adjustments.js"></script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+# 📖 HƯỚNG DẪN SỬ DỤNG HỆ THỐNG BIDA TỰ ĐỘNG QUA TELEGRAM
+
+Tài liệu này hướng dẫn chi tiết cách vận hành toàn bộ quy trình của quán. Hệ thống được chia làm 2 quyền: **Chủ Quán** và **Nhân Viên**.
+
+---
+
+## PHẦN I: DÀNH CHO CHỦ QUÁN (THIẾT LẬP & QUẢN LÝ)
+
+### 1. Thêm nhân viên mới vào hệ thống
+Mặc định, người lạ không thể sử dụng Bot. Để thêm nhân viên:
+1. Bảo nhân viên mới mở Telegram, tìm bot và bấm `/start`.
+2. Bot sẽ báo lỗi "Bạn chưa được cấp quyền" kèm theo **một mã số ID** của họ.
+3. Nhân viên gửi mã ID đó cho bạn.
+4. Trên điện thoại của Chủ Quán: Bấm **"👤 Nhân viên"** ➔ **Thêm nhân viên mới**.
+5. Nhập ID, nhập Tên, Số điện thoại.
+6. Khi được hỏi mức lương, nhập số tiền (VD: `25000`) hoặc gõ `/skip` để dùng mức mặc định là 25.000đ/giờ.
+
+### 2. Thiết lập ca làm việc
+- Bạn có thể vào **"🔧 Cấu hình"** để xem và sửa đổi các Khung giờ làm việc (VD: Ca Sáng 08:00 - 16:00, Ca Chiều 16:00 - 00:00).
+- Hệ thống sẽ dựa vào giờ này để cho phép nhân viên đăng ký.
+
+### 3. Duyệt yêu cầu hàng ngày
+Trong quá trình làm việc, Chủ Quán chỉ cần theo dõi các thông báo tự động từ Bot và ấn duyệt:
+- **Duyệt đăng ký ca:** Khi nhân viên đăng ký ca làm, bạn vào **"✅ Duyệt lịch/công"** để xác nhận.
+- **Duyệt ứng lương:** Khi có người xin ứng tiền, bot sẽ nhắn tin cho bạn.
+- **Xử lý đi trễ:** Nếu nhân viên Check-in trễ, bot sẽ tự trừ phút, đồng thời gửi tin nhắn cảnh báo cho Chủ. Nếu bạn chấp nhận lý do (kẹt xe, quán vắng), hãy bấm nút **"✅ Bỏ qua đi trễ (Tính đủ lương)"** ngay dưới tin nhắn đó, nhân viên sẽ không bị trừ lương.
+
+### 4. Tính lương cuối tháng
+Việc tính lương chưa bao giờ nhàn đến thế:
+1. Đầu tiên, ấn **"🏷️ Nhập giá đồ"** để điền giá các món đồ uống nhân viên đã dùng (nếu tháng trước đã nhập, chỉ cần ấn nút "Sao chép giá tháng trước").
+2. Bấm **"💰 Tính lương"** ➔ Chọn tên nhân viên.
+3. Nếu muốn thưởng hoặc phạt thêm, bấm **"🎁 Nhập Thưởng/Khấu trừ"** (nhập số âm `-50000` nếu là phạt).
+4. Hệ thống sẽ in ra Bảng lương hoàn chỉnh: `Tổng lương - Tiền ứng - Đồ uống đã dùng + Thưởng = Số tiền cuối cùng cần trả`.
+
+---
+
+## PHẦN II: DÀNH CHO NHÂN VIÊN (LUỒNG LÀM VIỆC)
+
+Tất cả nhân viên sử dụng các nút trên màn hình Telegram để tương tác. Không cần tải thêm App.
+
+### 1. Đăng ký & Đi làm
+- **Đăng ký ca:** Chọn **"✍️ Đăng ký ca"** ➔ Chọn ngày và ca muốn làm để báo cho Chủ quán sắp xếp.
+- **Check-in (Vào làm):** Khi tới quán, bắt buộc phải chọn **"✅ Vào làm"** ➔ Chọn ca ➔ **Gửi 1 tấm ảnh chụp quang cảnh quán**. Bắt buộc phải có ảnh thì mới được tính giờ. (Đi trễ hệ thống sẽ tự báo cáo).
+- **Check-out (Ra về):** Khi hết ca, bấm **"🚪 Ra về"**. Bot sẽ báo cáo bạn làm được bao nhiêu tiếng và tính ra luôn số tiền công của ca đó.
+
+### 2. Xử lý sự cố chấm công
+- Quên Check-out hôm trước? Hôm sau hãy ấn nút **"📝 Sửa công"**.
+- Nhập ngày, giờ vào / giờ ra đề nghị và ghi lý do để Chủ quán duyệt.
+
+### 3. Tiêu xài cá nhân
+- **Ăn uống:** Uống bò húc, nước suối của quán... phải bấm nút **"🍺 Ghi đồ đã dùng"**. Nhập tên món và số lượng. Hệ thống sẽ tự động tổng hợp để trừ vào lương cuối tháng.
+- **Ứng tiền:** Bấm **"💸 Xin ứng"** ➔ Nhập số tiền và lý do. Chờ chủ duyệt, tiền sẽ tự trừ vào bảng lương.
+
+---
+
+## PHẦN III: DÀNH CHO THU NGÂN (QUẢN LÝ QUỸ)
+
+Những nhân viên được giao trách nhiệm giữ tiền sẽ có thêm tác vụ Quản lý Quỹ (Tiền mặt và Chuyển khoản).
+
+1. **Nhận ca quỹ:** Bắt đầu ca, Thu ngân bấm **"🏦 Nhận ca quỹ"** ➔ Đếm khay tiền mặt đang có bao nhiêu và nhập vào bot để chốt số dư đầu ca.
+2. **Chi trả hằng ngày:** 
+   - Đem tiền mua đá, trả tiền nước... ➔ Bấm **"📤 Chi"** và ghi rõ lý do.
+   - Tiền bị chuyển khoản lỗi, lệch bill... ➔ Bấm **"💳 Chuyển khoản"** để điều chỉnh.
+3. **Khách Nợ:**
+   - Khách quen nợ tiền giờ/tiền nước ➔ Bấm **"📋 Nợ mới"**.
+   - Khi khách mang tiền tới trả ➔ Bấm **"💵 Thu nợ"**.
+4. **Kết ca (Vô cùng quan trọng):** 
+   - Cuối ca, Thu ngân bấm **"📊 Kết ca"**.
+   - Đếm lại toàn bộ tiền mặt trong két và nhập vào. Bot sẽ báo cáo ngay lập tức việc **Dư tiền** hay **Thiếu tiền** để tìm nguyên nhân ngay trong ca.
+
+---
+*💡 Mẹo: Hệ thống tự động sao lưu an toàn mỗi đêm. Nếu gặp lỗi, chỉ cần gõ `/start` để khởi động lại Menu chính.*

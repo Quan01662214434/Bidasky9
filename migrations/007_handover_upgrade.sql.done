@@ -1,0 +1,15 @@
+-- Giai đoạn 1: Schema cho Bàn Giao Nâng Cao
+
+-- Bảng attendance_sessions
+ALTER TABLE attendance_sessions ADD COLUMN arrived_at TEXT;
+ALTER TABLE attendance_sessions ADD COLUMN handover_from_session_id INTEGER;
+
+-- Cập nhật status cũ để phân loại rõ ràng hơn (nếu cần)
+-- Trạng thái 'working' có thể hiểu là đã check-in thành công (đã có check_in_time)
+-- Trạng thái mới: 'pending_handover' (đã tới, có ảnh, nhưng chưa nhận bàn giao, check_in_time sẽ NULL)
+
+-- Bảng cash_shifts
+ALTER TABLE cash_shifts ADD COLUMN handover_to_employee_id INTEGER;
+ALTER TABLE cash_shifts ADD COLUMN handover_status TEXT DEFAULT 'none'; -- none, draft, pending_verification, verified, locked
+ALTER TABLE cash_shifts ADD COLUMN verified_at TEXT;
+ALTER TABLE cash_shifts ADD COLUMN closing_draft_data TEXT;

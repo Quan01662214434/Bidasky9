@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: bida-manager
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: bash start.sh
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: BOT_TOKEN
+        sync: false
+      - key: OWNER_TELEGRAM_ID
+        sync: false
+      - key: DATABASE_URL
+        sync: false

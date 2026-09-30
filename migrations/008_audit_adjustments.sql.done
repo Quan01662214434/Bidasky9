@@ -1,0 +1,25 @@
+-- Bảng ghi lại lịch sử sửa đổi (Audit Trail)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entity_type TEXT NOT NULL, -- 'attendance_sessions', 'cash_shifts', 'transactions', 'inventory_items'
+    entity_id INTEGER NOT NULL,
+    adjusted_by INTEGER NOT NULL,
+    adjusted_at TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    old_data TEXT NOT NULL, -- JSON
+    new_data TEXT NOT NULL  -- JSON
+);
+
+-- Bảng attendance_sessions
+ALTER TABLE attendance_sessions ADD COLUMN is_adjusted INTEGER DEFAULT 0;
+ALTER TABLE attendance_sessions ADD COLUMN original_checkin_time TEXT;
+ALTER TABLE attendance_sessions ADD COLUMN original_checkout_time TEXT;
+ALTER TABLE attendance_sessions ADD COLUMN original_wage_amount INTEGER;
+
+-- Bảng cash_shifts
+ALTER TABLE cash_shifts ADD COLUMN is_adjusted INTEGER DEFAULT 0;
+ALTER TABLE cash_shifts ADD COLUMN original_data TEXT; -- JSON lưu lại tổng bill, tiền mặt, v.v.
+
+-- Bảng transactions
+ALTER TABLE transactions ADD COLUMN is_adjusted INTEGER DEFAULT 0;
+ALTER TABLE transactions ADD COLUMN original_amount INTEGER;

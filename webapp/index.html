@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BIDA SKY9 — Quản lý</title>
+    <meta name="description" content="Bảng điều khiển quản lý quán BIDA SKY9">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <div class="app-shell" id="app">
+        <!-- ═══ Desktop Sidebar ═══ -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <div class="brand-logo">
+                    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="#C9A45C" stroke-width="2.5"/><circle cx="16" cy="16" r="5" fill="#C9A45C"/></svg>
+                </div>
+                <span class="brand-name">BIDA SKY9</span>
+            </div>
+
+            <nav class="sidebar-nav" id="sidebar-nav">
+                <a href="#" class="nav-item active" data-page="overview">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                    <span>Tổng quan</span>
+                </a>
+                <a href="#" class="nav-item" data-page="shifts">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <span>Ca làm</span>
+                </a>
+                <a href="#" class="nav-item" data-page="cashflow">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+                    <span>Thu chi & bàn giao</span>
+                </a>
+                <a href="#" class="nav-item" data-page="debts">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                    <span>Khách nợ</span>
+                </a>
+                <a href="#" class="nav-item" data-page="inventory">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>
+                    <span>Hàng hóa</span>
+                </a>
+                <a href="#" class="nav-item" data-page="salary">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+                    <span>Bảng lương</span>
+                </a>
+                <a href="#" class="nav-item" data-page="employees">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <span>Nhân viên</span>
+                </a>
+                <a href="#" class="nav-item" data-page="settings">
+                    <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                    <span>Cài đặt</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-badge" id="user-badge">
+                    <div class="user-avatar" id="user-avatar">?</div>
+                    <div class="user-meta">
+                        <span class="user-name" id="user-name">Chủ quán</span>
+                        <span class="user-role">Quản lý</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- ═══ Main Area ═══ -->
+        <main class="main-area" id="main-area">
+
+            <!-- ─── Page: Tổng quan ─── -->
+            <section class="page active" id="page-overview">
+                <!-- Page Header -->
+                <header class="page-header">
+                    <div class="page-title-row">
+                        <h1 class="page-title">BIDA SKY9</h1>
+                        <span class="update-time" id="update-time">—</span>
+                    </div>
+                    <div class="date-picker-row">
+                        <button class="date-btn active" data-range="today" id="btn-today">Hôm nay</button>
+                        <button class="date-btn" data-range="yesterday" id="btn-yesterday">Hôm qua</button>
+                        <input type="date" class="date-input" id="date-input">
+                        <button class="btn-refresh" id="btn-refresh" title="Tải lại">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                        </button>
+                    </div>
+                </header>
+
+                <!-- Stat Cards -->
+                <div class="stat-grid" id="stat-grid">
+                    <div class="stat-card" data-stat="revenue">
+                        <div class="stat-icon-wrap revenue">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+                        </div>
+                        <div class="stat-body">
+                            <span class="stat-label">Doanh thu bill</span>
+                            <span class="stat-value" id="val-revenue">—</span>
+                            <span class="stat-sub" id="sub-revenue">Ngày kinh doanh</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" data-stat="debt">
+                        <div class="stat-icon-wrap debt">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                        </div>
+                        <div class="stat-body">
+                            <span class="stat-label">Nợ cần thu</span>
+                            <span class="stat-value danger" id="val-debt">—</span>
+                            <span class="stat-sub" id="sub-debt">Tất cả khoản nợ</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" data-stat="staff">
+                        <div class="stat-icon-wrap staff">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        </div>
+                        <div class="stat-body">
+                            <span class="stat-label">Nhân viên</span>
+                            <span class="stat-value" id="val-staff">—</span>
+                            <span class="stat-sub" id="sub-staff">đang làm</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" data-stat="pending">
+                        <div class="stat-icon-wrap pending">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        </div>
+                        <div class="stat-body">
+                            <span class="stat-label">Chờ xử lý</span>
+                            <span class="stat-value" id="val-pending">—</span>
+                            <span class="stat-sub" id="sub-pending">việc cần xem</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Actions -->
+                <div class="card" id="pending-section" style="display:none">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            Việc cần xử lý
+                        </h2>
+                    </div>
+                    <div class="card-body" id="pending-list">
+                        <!-- Dynamic -->
+                    </div>
+                </div>
+
+                <!-- Shifts Today -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            Ca hôm nay
+                        </h2>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table class="data-table" id="shifts-table">
+                            <thead>
+                                <tr>
+                                    <th>Nhân viên</th>
+                                    <th>Ca</th>
+                                    <th>Giờ vào</th>
+                                    <th>Giờ ra</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="shifts-tbody">
+                                <tr><td colspan="5" class="state-loading">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Two‑col: Activity + Low Stock -->
+                <div class="grid-2col">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Hoạt động gần đây
+                            </h2>
+                        </div>
+                        <div class="card-body" id="activity-list">
+                            <div class="state-loading">Đang tải...</div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title">
+                                <svg class="section-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05M12 22.08V12"/></svg>
+                                Hàng tồn thấp
+                            </h2>
+                        </div>
+                        <div class="card-body" id="lowstock-list">
+                            <div class="state-loading">Đang tải...</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── Page: Debts ─── -->
+            <section class="page" id="page-debts">
+                <header class="page-header">
+                    <h1 class="page-title">Khách nợ</h1>
+                </header>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Danh sách nợ hiện tại</h2>
+                        <span class="card-badge" id="debt-total-badge">—</span>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Khách hàng</th>
+                                    <th>Tổng bill</th>
+                                    <th>Còn nợ</th>
+                                    <th>Hạn trả</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="debts-tbody">
+                                <tr><td colspan="5" class="state-loading">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── Page: Cash Shifts ─── -->
+            <section class="page" id="page-shifts">
+                <header class="page-header">
+                    <h1 class="page-title">Ca làm</h1>
+                </header>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Ca quỹ trong ngày</h2>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Nhân viên</th>
+                                    <th>Tiền đầu ca</th>
+                                    <th>Doanh thu bill</th>
+                                    <th>Tiền cuối ca</th>
+                                    <th>Chênh lệch</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cashshift-tbody">
+                                <tr><td colspan="6" class="state-loading">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── Page: Inventory ─── -->
+            <section class="page" id="page-inventory">
+                <header class="page-header">
+                    <h1 class="page-title">Hàng hóa</h1>
+                </header>
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Tồn kho</h2>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên hàng</th>
+                                    <th>Phân loại</th>
+                                    <th>Tồn kho</th>
+                                    <th>Đơn vị</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-tbody">
+                                <tr><td colspan="5" class="state-loading">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── Page: Employees ─── -->
+            <section class="page" id="page-employees">
+                <header class="page-header">
+                    <h1 class="page-title">Nhân viên</h1>
+                </header>
+                <div class="card">
+                    <div class="card-body table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tên</th>
+                                    <th>Vai trò</th>
+                                    <th>SĐT</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employees-tbody">
+                                <tr><td colspan="4" class="state-loading">Đang tải...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ─── Placeholder pages ─── -->
+            <section class="page" id="page-cashflow">
+                <header class="page-header"><h1 class="page-title">Thu chi & bàn giao</h1></header>
+                <div class="card"><div class="card-body"><p class="state-empty">Chức năng đang phát triển...</p></div></div>
+            </section>
+            <section class="page" id="page-salary">
+                <header class="page-header"><h1 class="page-title">Bảng lương</h1></header>
+                <div class="card"><div class="card-body"><p class="state-empty">Chức năng đang phát triển...</p></div></div>
+            </section>
+            <section class="page" id="page-settings">
+                <header class="page-header"><h1 class="page-title">Cài đặt</h1></header>
+                <div class="card"><div class="card-body"><p class="state-empty">Chức năng đang phát triển...</p></div></div>
+            </section>
+        </main>
+
+        <!-- ═══ Mobile Bottom Nav ═══ -->
+        <nav class="mobile-nav" id="mobile-nav">
+            <button class="mob-btn active" data-page="overview">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+                <span>Tổng quan</span>
+            </button>
+            <button class="mob-btn" data-page="shifts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>Ca làm</span>
+            </button>
+            <button class="mob-btn" data-page="debts">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                <span>Khách nợ</span>
+            </button>
+            <button class="mob-btn" data-page="more" id="mob-more-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                <span>Thêm</span>
+            </button>
+        </nav>
+
+        <!-- Mobile More Menu -->
+        <div class="more-menu-overlay" id="more-overlay" style="display:none"></div>
+        <div class="more-menu" id="more-menu" style="display:none">
+            <button class="more-item" data-page="cashflow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 100 7h5a3.5 3.5 0 110 7H6"/></svg>
+                Thu chi & bàn giao
+            </button>
+            <button class="more-item" data-page="inventory">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                Hàng hóa
+            </button>
+            <button class="more-item" data-page="salary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>
+                Bảng lương
+            </button>
+            <button class="more-item" data-page="employees">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Nhân viên
+            </button>
+            <button class="more-item" data-page="settings">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.6 9"/></svg>
+                Cài đặt
+            </button>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

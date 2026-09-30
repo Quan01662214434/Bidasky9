@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Sổ Tay Hướng Dẫn Nhân Viên - BIDA SKY9</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            color: #111827;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background-color: #f9fafb;
+        }
+        
+        .page {
+            background-color: white;
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #C9A45C;
+        }
+
+        .header h1 {
+            color: #111827;
+            font-size: 28px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            color: #6B7280;
+            font-size: 16px;
+        }
+
+        h2 {
+            color: #C9A45C;
+            font-size: 20px;
+            margin-top: 35px;
+            border-left: 4px solid #C9A45C;
+            padding-left: 12px;
+        }
+
+        h3 {
+            color: #374151;
+            font-size: 17px;
+            margin-top: 25px;
+        }
+
+        .step-box {
+            background-color: #f3f4f6;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+            border: 1px solid #e5e7eb;
+        }
+
+        .alert {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 12px 16px;
+            margin: 15px 0;
+            color: #991b1b;
+            border-radius: 4px;
+        }
+
+        .highlight {
+            background-color: #fffbeb;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: #b45309;
+        }
+
+        ul, ol {
+            padding-left: 20px;
+        }
+
+        li {
+            margin-bottom: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f9fafb;
+            font-weight: 600;
+        }
+
+        .btn {
+            display: inline-block;
+            background-color: #111827;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            color: #9ca3af;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <h1>SỔ TAY VẬN HÀNH DÀNH CHO NHÂN VIÊN</h1>
+            <p>Hệ Thống Quản Lý Tự Động BIDA SKY9 (Bot Telegram)</p>
+        </div>
+
+        <h2>I. NHỮNG VIỆC CẦN LÀM KHI ĐẾN QUÁN (MỞ CA)</h2>
+        <div class="step-box">
+            <ol>
+                <li>Vào nhóm chat Telegram BIDA SKY9.</li>
+                <li>Bấm nút <span class="btn">Chấm công</span> để bắt đầu tính giờ làm.</li>
+                <li>Mở két sắt ra, đếm số tiền mặt đang có (Ví dụ: 200,000đ).</li>
+                <li>Bấm nút <span class="btn">Nhận ca quỹ</span> trên menu Bot và nhập số tiền vừa đếm được.</li>
+            </ol>
+        </div>
+        <p><em>*Ý nghĩa: Thao tác này giúp hệ thống biết bạn đã bắt đầu làm việc và chính thức giữ số tiền trong két sắt.</em></p>
+
+        <h2>II. QUY TRÌNH THU TIỀN CỦA KHÁCH</h2>
+        <h3>1. Khách thanh toán bằng TIỀN MẶT</h3>
+        <ul>
+            <li>In bill từ máy tính giao cho khách.</li>
+            <li>Thu tiền mặt và cất vào két sắt.</li>
+            <li><span class="highlight">KHÔNG</span> cần thao tác gì thêm trên Bot Telegram.</li>
+        </ul>
+
+        <h3>2. Khách thanh toán bằng CHUYỂN KHOẢN</h3>
+        <div class="step-box">
+            <ol>
+                <li>Khách quét mã QR và chuyển khoản.</li>
+                <li>Nhân viên <strong>chụp lại màn hình bill chuyển khoản</strong>.</li>
+                <li>Gửi bức ảnh đó thẳng vào nhóm Telegram.</li>
+                <li>Khi Bot hỏi số tiền, hãy <strong>Gõ số tiền</strong> khách vừa chuyển (Ví dụ: 150k hoặc 150000).</li>
+            </ol>
+        </div>
+
+        <h2>III. QUY TRÌNH CHO KHÁCH NỢ VÀ THU NỢ</h2>
+        <h3>1. Khách xin Nợ Bill</h3>
+        <div class="step-box">
+            <ol>
+                <li>Bấm nút <span class="btn">Khách nợ</span> ở menu chính ➔ Chọn <strong>Ghi nợ mới</strong>.</li>
+                <li>Chọn tên khách quen hoặc nhập tên khách mới.</li>
+                <li>Nhập mã Bill trên máy tính và số tiền khách nợ.</li>
+                <li><strong>QUAN TRỌNG:</strong> Bot sẽ yêu cầu gửi ảnh bill. Hãy lấy điện thoại chụp tờ bill giấy và gửi lên. Nếu bỏ qua bước này sẽ bị hệ thống báo cáo lỗi <span class="highlight">Thiếu chứng từ</span>.</li>
+            </ol>
+        </div>
+
+        <h3>2. Khách quay lại Trả Nợ</h3>
+        <div class="step-box">
+            <ol>
+                <li>Bấm nút <span class="btn">Khách nợ</span> ở menu chính ➔ Chọn <strong>Thu nợ</strong>.</li>
+                <li>Chọn tên khách hàng (Bot sẽ tự tính tổng số tiền khách đang nợ của tất cả các ngày).</li>
+                <li>Bấm chọn khoản nợ khách muốn trả.</li>
+                <li>Chọn phương thức trả là <strong>Tiền mặt</strong> hay <strong>Chuyển khoản</strong>.</li>
+            </ol>
+        </div>
+
+        <h2>IV. NHỮNG VIỆC CẦN LÀM TRƯỚC KHI RA VỀ (ĐÓNG CA)</h2>
+        <div class="alert">
+            <strong>LƯU Ý QUAN TRỌNG:</strong> Bạn BẮT BUỘC phải thực hiện đủ 2 bước dưới đây trước khi rời khỏi quán.
+        </div>
+        
+        <h3>Bước 1: Chốt Két Sắt (Kết ca quỹ)</h3>
+        <div class="step-box">
+            <ol>
+                <li>Mở két sắt ra và <strong>đếm toàn bộ số tiền mặt</strong> đang có trong két.</li>
+                <li>Bấm nút <span class="btn">Kết ca quỹ</span> trên Bot Telegram.</li>
+                <li>Bot sẽ hỏi bạn đếm được bao nhiêu tiền, hãy nhập chính xác số tiền vừa đếm.</li>
+                <li>Ghi chú thêm nếu cần (ví dụ: Bàn 3, 5, 7 đang chơi chưa tính tiền).</li>
+            </ol>
+        </div>
+
+        <h3>Bước 2: Kết thúc giờ làm (Check-out)</h3>
+        <div class="step-box">
+            <ol>
+                <li>Bấm nút <span class="btn">Chấm công</span> lần nữa.</li>
+                <li>Chọn <strong>Check-out (Ra về)</strong> để hệ thống ngừng tính giờ làm.</li>
+                <li>Chụp 1 tấm ảnh check-out tại quán nếu Bot yêu cầu.</li>
+            </ol>
+        </div>
+        <p><em>Sau khi làm xong 2 bước này, bạn bàn giao lại két sắt cho ca sau và có thể yên tâm ra về. Bảng lương của bạn sẽ được hệ thống tính toán hoàn toàn tự động.</em></p>
+
+        <div class="footer">
+            Tài liệu nội bộ - Áp dụng cho toàn bộ nhân viên BIDA SKY9
+        </div>
+    </div>
+</body>
+</html>
