@@ -251,8 +251,14 @@ async def receive_debt_photo(update: Update, context: ContextTypes.DEFAULT_TYPE)
         [InlineKeyboardButton("✅ Xác nhận", callback_data=f"{CB.DEBT_NEW}:confirm")],
         [InlineKeyboardButton("❌ Hủy", callback_data=f"{CB.BACK}:menu")],
     ]
-    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard),
-                                     parse_mode="Markdown")
+    
+    # Nếu là callback (bỏ qua ảnh) thì edit message, nếu là message (gửi ảnh) thì reply
+    if query:
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard),
+                                       parse_mode="Markdown")
+    else:
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard),
+                                         parse_mode="Markdown")
     return DN_CONFIRM
 
 
