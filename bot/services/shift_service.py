@@ -97,15 +97,15 @@ def register_shift(
     now = now_utc_iso()
     cursor = conn.execute(
         """INSERT INTO shift_registrations 
-           (employee_id, template_id, shift_date, status, created_at)
-           VALUES (?, ?, ?, 'pending', ?)""",
-        (employee_id, template_id, shift_date, now)
+           (employee_id, template_id, shift_date, status, created_at, approved_at)
+           VALUES (?, ?, ?, 'approved', ?, ?)""",
+        (employee_id, template_id, shift_date, now, now)
     )
     reg_id = cursor.lastrowid
     conn.commit()
     
     log_action(employee_id, "register_shift", "shift_registrations", reg_id)
-    return {"id": reg_id, "status": "pending"}
+    return {"id": reg_id, "status": "approved"}
 
 
 def approve_shift(reg_id: int, approved_by: int) -> bool:
