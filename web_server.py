@@ -161,14 +161,12 @@ async def shutdown_event():
             logger.error("Bot shutdown error: %s", e)
 
 
+_processing_update_ids = set()
+
 @app.post("/telegram-webhook/{token}")
 async def telegram_webhook(token: str, request: Request):
-    """Endpoint nhận update từ Telegram webhook.
-    
-    Includes update_id dedup to prevent double-processing when
-    Telegram retries or user clicks buttons multiple times.
-    """
-    global _processed_update_ids
+    """Endpoint nhận update từ Telegram webhook."""
+    global _processed_update_ids, _processing_update_ids
     bot_token = os.getenv("BOT_TOKEN", "")
     if token != bot_token:
         raise HTTPException(status_code=403, detail="Invalid token")
@@ -180,26 +178,33 @@ async def telegram_webhook(token: str, request: Request):
         data = await request.json()
         update_id = data.get("update_id")
         
-        # Dedup: skip if already processed
-        if update_id and update_id in _processed_update_ids:
-            logger.debug("Skipped duplicate update_id=%s", update_id)
-            return {"ok": True}
-        
-        # Track this update
         if update_id:
-            _processed_update_ids.add(update_id)
-            # Prevent unbounded growth
-            if len(_processed_update_ids) > _MAX_PROCESSED_IDS:
-                # Remove oldest half
-                sorted_ids = sorted(_processed_update_ids)
-                _processed_update_ids = set(sorted_ids[_MAX_PROCESSED_IDS // 2:])
+            if update_id in _processed_update_ids:
+                logger.debug("Skipped already processed update_id=%s", update_id)
+                return {"ok": True}
+            if update_id in _processing_update_ids:
+                logger.debug("Skipped currently processing update_id=%s", update_id)
+                return {"ok": True}
+            _processing_update_ids.add(update_id)
         
-        update = Update.de_json(data, bot_application.bot)
-        await bot_application.process_update(update)
+        try:
+            update = Update.de_json(data, bot_application.bot)
+            await bot_application.process_update(update)
+            
+            if update_id:
+                _processed_update_ids.add(update_id)
+                if len(_processed_update_ids) > _MAX_PROCESSED_IDS:
+                    sorted_ids = sorted(_processed_update_ids)
+                    _processed_update_ids = set(sorted_ids[_MAX_PROCESSED_IDS // 2:])
+        finally:
+            if update_id and update_id in _processing_update_ids:
+                _processing_update_ids.remove(update_id)
+                
     except Exception as e:
         logger.error("Webhook processing error: %s", e, exc_info=True)
+        # Báo lỗi 500 để Telegram retry nếu thực sự crash trước khi lưu
+        raise HTTPException(status_code=500, detail="Internal processing error")
     
-    # Always return 200 to Telegram to prevent retries
     return {"ok": True}
 
 
@@ -268,8 +273,6 @@ def verify_owner_auth(authorization: str = Header(None)):
         parsed = urllib.parse.parse_qsl(init_data)
         data_dict = dict(parsed)
         if 'hash' not in data_dict:
-            if init_data == str(owner_id):
-                return True
             raise HTTPException(status_code=401, detail="Invalid token format")
             
         received_hash = data_dict.pop('hash')
@@ -280,9 +283,7 @@ def verify_owner_auth(authorization: str = Header(None)):
         calc_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
         
         if calc_hash != received_hash:
-            # Fallback for dev mode (if init_data is just the owner ID)
-            if init_data != str(owner_id):
-                raise HTTPException(status_code=401, detail="Chữ ký không hợp lệ")
+            raise HTTPException(status_code=401, detail="Chữ ký không hợp lệ")
                 
         # Parse user
         if 'user' in data_dict:
@@ -290,8 +291,6 @@ def verify_owner_auth(authorization: str = Header(None)):
             user_id = user_info.get('id')
             if str(user_id) != str(owner_id):
                 raise HTTPException(status_code=403, detail="Chỉ Chủ quán mới có quyền thực hiện thao tác này")
-        elif init_data == str(owner_id):
-            pass # Dev mode
         else:
             raise HTTPException(status_code=401, detail="Không tìm thấy thông tin user")
             

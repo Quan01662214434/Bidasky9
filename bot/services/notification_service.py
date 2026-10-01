@@ -195,7 +195,7 @@ async def check_unclosed_sessions(bot: Bot):
     conn = get_connection()
     now = vn_now()
     
-    checkout_threshold = 30  # phút sau giờ kết thúc ca
+    checkout_threshold = 5  # phút sau giờ kết thúc ca
     
     open_sessions = conn.execute(
         """SELECT a.*, u.display_name

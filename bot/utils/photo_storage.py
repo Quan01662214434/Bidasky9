@@ -25,13 +25,13 @@ SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 STORAGE_BUCKET = os.getenv("STORAGE_BUCKET", "photos")
 
 
-def _get_supabase_storage_url(path: str) -> str:
-    """Trả về public URL cho file trên Supabase Storage."""
-    return f"{SUPABASE_URL}/storage/v1/object/public/{STORAGE_BUCKET}/{path}"
+def _get_supabase_storage_path(path: str) -> str:
+    """Trả về remote path thay vì public URL cho private storage."""
+    return f"supabase://{STORAGE_BUCKET}/{path}"
 
 
 async def _upload_to_supabase(file_bytes: bytes, remote_path: str) -> str | None:
-    """Upload file lên Supabase Storage. Trả về public URL hoặc None."""
+    """Upload file lên Supabase Storage. Trả về remote path hoặc None."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         return None
 
@@ -46,13 +46,12 @@ async def _upload_to_supabase(file_bytes: bytes, remote_path: str) -> str | None
                 headers={
                     "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
                     "Content-Type": "image/jpeg",
-                    "x-upsert": "true",  # Overwrite if exists
+                    "x-upsert": "true",
                 },
             )
             if resp.status_code in (200, 201):
-                public_url = _get_supabase_storage_url(remote_path)
-                logger.info("Uploaded to Supabase Storage: %s", remote_path)
-                return public_url
+                logger.info("Uploaded to Supabase Storage (Private): %s", remote_path)
+                return _get_supabase_storage_path(remote_path)
             else:
                 logger.error("Supabase upload failed %s: %s", resp.status_code, resp.text[:200])
                 return None
@@ -60,67 +59,64 @@ async def _upload_to_supabase(file_bytes: bytes, remote_path: str) -> str | None
         logger.error("Supabase upload error: %s", e)
         return None
 
+def _queue_failed_upload(file_id: str, file_unique_id: str, category: str, reference_id: str, uploader_id: int, local_path: str, error_msg: str):
+    from bot.models.database import get_connection, now_utc_iso
+    conn = get_connection()
+    conn.execute(
+        """INSERT INTO pending_photo_uploads 
+           (file_id, file_unique_id, category, reference_id, uploader_id, local_path, last_error, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+        (file_id, file_unique_id, category, reference_id, uploader_id, local_path, error_msg, now_utc_iso())
+    )
 
 async def save_photo_from_telegram(
     bot: Bot,
     file_id: str,
     file_unique_id: str,
-    category: str,  # checkin/debt/transaction/receipt/report
+    category: str,
     reference_id: str,
     uploader_id: int,
 ) -> str | None:
     """
-    Tải ảnh từ Telegram và lưu.
-    Ưu tiên Supabase Storage nếu đã cấu hình.
-    Fallback: lưu filesystem cục bộ.
-    Trả về URL/đường dẫn hoặc None.
+    Tải ảnh từ Telegram và lưu lên Supabase Storage riêng tư.
+    Nếu lỗi mạng, đưa vào hàng đợi retry.
     """
-    try:
-        timestamp = datetime.now(VN_TZ).strftime("%Y%m%d_%H%M%S")
-        filename = f"{category}_{reference_id}_{timestamp}_{file_unique_id}"
+    timestamp = datetime.now(VN_TZ).strftime("%Y%m%d_%H%M%S")
+    filename = f"{category}_{reference_id}_{timestamp}_{file_unique_id}"
 
-        # Tải file từ Telegram
+    try:
         tg_file = await bot.get_file(file_id)
         ext = ".jpg"
         if tg_file.file_path and "." in tg_file.file_path:
             ext = "." + tg_file.file_path.split(".")[-1]
-
-        # Thử upload Supabase Storage trước
-        if SUPABASE_URL and SUPABASE_SERVICE_KEY:
-            file_bytes = await tg_file.download_as_bytearray()
-            remote_path = f"{category}/{filename}{ext}"
-            public_url = await _upload_to_supabase(bytes(file_bytes), remote_path)
-            if public_url:
-                return public_url
-            logger.warning("Supabase upload failed, falling back to local storage")
-
-        # Fallback: lưu cục bộ
+            
+        file_bytes = await tg_file.download_as_bytearray()
+        remote_path = f"{category}/{filename}{ext}"
+        
+        # Luôn lưu local path tạm thời để retry
         photo_dir = Path(Config.PHOTO_STORAGE_PATH) / category
         photo_dir.mkdir(parents=True, exist_ok=True)
         local_path = str(photo_dir / f"{filename}{ext}")
-        await tg_file.download_to_drive(local_path)
+        with open(local_path, "wb") as f:
+            f.write(file_bytes)
 
-        # Lưu metadata
-        meta = {
-            "file_id": file_id,
-            "file_unique_id": file_unique_id,
-            "category": category,
-            "reference_id": reference_id,
-            "uploader_id": uploader_id,
-            "downloaded_at": datetime.now(VN_TZ).isoformat(),
-            "local_path": local_path,
-        }
-        meta_path = str(photo_dir / f"{filename}.json")
-        with open(meta_path, "w", encoding="utf-8") as f:
-            json.dump(meta, f, ensure_ascii=False, indent=2)
-
-        logger.info("Đã lưu ảnh local: %s", local_path)
-        return local_path
+        if SUPABASE_URL and SUPABASE_SERVICE_KEY:
+            storage_path = await _upload_to_supabase(bytes(file_bytes), remote_path)
+            if storage_path:
+                return storage_path
+            
+            # Queue for retry
+            logger.warning("Upload failed, queuing for retry: %s", remote_path)
+            _queue_failed_upload(file_id, file_unique_id, category, reference_id, uploader_id, local_path, "Upload failed")
+            return f"pending://{local_path}"
+        
+        # Nếu chưa config supabase
+        _queue_failed_upload(file_id, file_unique_id, category, reference_id, uploader_id, local_path, "No Supabase config")
+        return f"pending://{local_path}"
 
     except Exception as e:
-        logger.error("Lỗi lưu ảnh: %s", e)
-        return None
-
+        logger.error("Lỗi tải ảnh từ Telegram: %s", e)
+        raise ValueError("Lỗi tải ảnh từ Telegram. Vui lòng thử lại sau.")
 
 def check_duplicate_photo(file_unique_id: str, category: str = None) -> bool:
     """
