@@ -38,11 +38,16 @@ def create_bot_application():
         except Exception as e:
             logger.error("Lỗi tạo ca mặc định: %s", e)
     
-    # Build application - updater=None cho webhook mode
+    # Build application with DB-backed persistence
+    # Saves ConversationHandler state + user_data to user_states table
+    from bot.utils.persistence import PostgresPersistence
+    persistence = PostgresPersistence()
+    
     application = (
         ApplicationBuilder()
         .token(Config.BOT_TOKEN)
         .updater(None)
+        .persistence(persistence)
         .build()
     )
     

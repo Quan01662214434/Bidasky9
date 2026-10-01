@@ -440,7 +440,6 @@ async def cancel_inv(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
-    import_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_import, pattern=f"^{CB.INV_IMPORT}:start$")],
         states={
             IMP_ITEM: [CallbackQueryHandler(select_import_item, pattern=f"^{CB.INV_IMPORT}:item:")],
@@ -450,9 +449,19 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_inv), CallbackQueryHandler(cancel_inv, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    import_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_import, pattern=f"^{CB.INV_IMPORT}:start$")],
+        states={
+            IMP_ITEM: [CallbackQueryHandler(select_import_item, pattern=f"^{CB.INV_IMPORT}:item:")],
+            IMP_QTY: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_import_qty)],
+            IMP_MORE: [CallbackQueryHandler(add_more_or_finish, pattern=f"^{CB.INV_IMPORT}:(more|done)$")],
+            IMP_PAY: [CallbackQueryHandler(select_payment, pattern=f"^{CB.INV_IMPORT}:pay:")],
+        },
+        fallbacks=[CommandHandler('start', cancel_inv), CallbackQueryHandler(cancel_inv, pattern=f"^{CB.BACK}:menu$")],
+        name="inventory_conv_1", persistent=True,
+        per_user=True, per_chat=True,
     )
     
-    check_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_check, pattern=f"^{CB.INV_CHECK}:start$")],
         states={
             CHK_ITEM: [CallbackQueryHandler(select_check_item, pattern=f"^{CB.INV_CHECK}:(item|done)")],
@@ -460,8 +469,25 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_inv), CallbackQueryHandler(cancel_inv, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    check_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_check, pattern=f"^{CB.INV_CHECK}:start$")],
+        states={
+            CHK_ITEM: [CallbackQueryHandler(select_check_item, pattern=f"^{CB.INV_CHECK}:(item|done)")],
+            CHK_QTY: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_check_qty)],
+        },
+        fallbacks=[CommandHandler('start', cancel_inv), CallbackQueryHandler(cancel_inv, pattern=f"^{CB.BACK}:menu$")],
+        name="inventory_conv_2", persistent=True,
+        per_user=True, per_chat=True,
     )
     
+        entry_points=[CallbackQueryHandler(start_loss, pattern=f"^{CB.INV_LOSS}:start$")],
+        states={
+            LOSS_ITEM: [CallbackQueryHandler(select_loss_item, pattern=f"^{CB.INV_LOSS}:item:")],
+            LOSS_QTY: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_loss_qty)],
+            LOSS_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_loss_reason)],
+        },
+        fallbacks=[CommandHandler('start', cancel_inv), CallbackQueryHandler(cancel_inv, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     loss_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_loss, pattern=f"^{CB.INV_LOSS}:start$")],
         states={
@@ -470,6 +496,7 @@ def get_handlers():
             LOSS_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_loss_reason)],
         },
         fallbacks=[CommandHandler('start', cancel_inv), CallbackQueryHandler(cancel_inv, pattern=f"^{CB.BACK}:menu$")],
+        name="inventory_conv_3", persistent=True,
         per_user=True, per_chat=True,
     )
     

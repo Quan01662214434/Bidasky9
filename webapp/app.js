@@ -786,7 +786,7 @@ async function loadSalary() {
     try {
         const data = await apiFetch(`/api/v2/salary?month=${selectedMonth}`);
         if (!data.salaries || data.salaries.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="state-empty">Chưa có dữ liệu lương</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="state-empty">Chưa có dữ liệu lương</td></tr>';
             return;
         }
         
@@ -798,12 +798,13 @@ async function loadSalary() {
                 <td>${s.shift_count} ca (${s.total_hours.toFixed(1)}h)</td>
                 <td class="money">${fmtMoney(s.base_salary)}</td>
                 <td class="money money-neg">${fmtMoney(s.advance)}</td>
+                <td class="money money-neg">${fmtMoney(s.consumable)}</td>
                 <td class="money money-pos" style="font-weight: 700;">${fmtMoney(s.net_salary)}</td>
             `;
             tbody.appendChild(tr);
         });
     } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="5" class="state-error">Lỗi tải dữ liệu</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="state-error">Lỗi tải dữ liệu: ${err.message}</td></tr>`;
     }
 }
 

@@ -376,6 +376,14 @@ def get_handlers():
     """Trả về handlers."""
     from telegram.ext import CommandHandler, MessageHandler, filters, ConversationHandler
     
+        entry_points=[CallbackQueryHandler(start_add_shift, pattern="^add_shift:start$")],
+        states={
+            ADD_SHIFT_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_shift_name)],
+            ADD_SHIFT_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_shift_time)],
+            ADD_SHIFT_STAFF: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_shift_staff)],
+        },
+        fallbacks=[CommandHandler('start', cancel_add_shift), CallbackQueryHandler(cancel_add_shift, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     add_shift_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_add_shift, pattern="^add_shift:start$")],
         states={
@@ -384,6 +392,7 @@ def get_handlers():
             ADD_SHIFT_STAFF: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_shift_staff)],
         },
         fallbacks=[CommandHandler('start', cancel_add_shift), CallbackQueryHandler(cancel_add_shift, pattern=f"^{CB.BACK}:menu$")],
+        name="shift_reg_conv_1", persistent=True,
         per_user=True, per_chat=True,
     )
     
@@ -450,6 +459,13 @@ def get_handlers():
         context.user_data.pop("edit_shift_id", None)
         return ConversationHandler.END
         
+        entry_points=[CallbackQueryHandler(start_edit_shift, pattern="^edit_shift:start$")],
+        states={
+            EDIT_SHIFT_SELECT: [CallbackQueryHandler(select_edit_shift, pattern="^edit_shift_sel:")],
+            EDIT_SHIFT_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_edit_shift_time)],
+        },
+        fallbacks=[CommandHandler('start', cancel_add_shift), CallbackQueryHandler(cancel_add_shift, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     edit_shift_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_edit_shift, pattern="^edit_shift:start$")],
         states={
@@ -457,6 +473,7 @@ def get_handlers():
             EDIT_SHIFT_TIME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_edit_shift_time)],
         },
         fallbacks=[CommandHandler('start', cancel_add_shift), CallbackQueryHandler(cancel_add_shift, pattern=f"^{CB.BACK}:menu$")],
+        name="shift_reg_conv_2", persistent=True,
         per_user=True, per_chat=True,
     )
     

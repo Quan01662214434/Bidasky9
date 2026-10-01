@@ -468,7 +468,6 @@ async def cancel_att(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
-    checkin_conv = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(start_checkin, pattern=f"^{CB.ATT_CHECKIN}:start$"),
             MessageHandler(filters.Regex(r"^✅ Check-in$"), start_checkin),
@@ -479,8 +478,29 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_att), CallbackQueryHandler(cancel_att, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    checkin_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(start_checkin, pattern=f"^{CB.ATT_CHECKIN}:start$"),
+            MessageHandler(filters.Regex(r"^✅ Check-in$"), start_checkin),
+        ],
+        states={
+            CI_SELECT_SHIFT: [CallbackQueryHandler(select_shift_checkin, pattern=f"^{CB.ATT_CHECKIN}:shift:")],
+            CI_WAIT_PHOTO: [MessageHandler(filters.PHOTO | filters.TEXT, receive_checkin_photo)],
+        },
+        fallbacks=[CommandHandler('start', cancel_att), CallbackQueryHandler(cancel_att, pattern=f"^{CB.BACK}:menu$")],
+        name="attendance_conv_1", persistent=True,
+        per_user=True, per_chat=True,
     )
     
+        entry_points=[CallbackQueryHandler(start_adjust_request, pattern=f"^{CB.ATT_ADJUST_REQ}:start$")],
+        states={
+            ADJ_DATE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_adj_date)],
+            ADJ_TIMES: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_adj_times)],
+            ADJ_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_adj_reason)],
+            ADJ_CONFIRM: [CallbackQueryHandler(confirm_adjustment, pattern=f"^{CB.ATT_ADJUST_REQ}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_att), CallbackQueryHandler(cancel_att, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     adjust_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_adjust_request, pattern=f"^{CB.ATT_ADJUST_REQ}:start$")],
         states={
@@ -490,6 +510,7 @@ def get_handlers():
             ADJ_CONFIRM: [CallbackQueryHandler(confirm_adjustment, pattern=f"^{CB.ATT_ADJUST_REQ}:confirm$")],
         },
         fallbacks=[CommandHandler('start', cancel_att), CallbackQueryHandler(cancel_att, pattern=f"^{CB.BACK}:menu$")],
+        name="attendance_conv_2", persistent=True,
         per_user=True, per_chat=True,
     )
     

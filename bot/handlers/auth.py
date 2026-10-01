@@ -230,6 +230,24 @@ async def revoke_employee(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
+        entry_points=[
+            CallbackQueryHandler(start_add_employee, pattern=f"^{CB.AUTH_APPROVE}:add$")
+        ],
+        states={
+            ADD_ID: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_employee_id)],
+            ADD_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_employee_name)],
+            ADD_PHONE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_employee_phone),
+                CommandHandler("skip", receive_employee_phone),
+            ],
+            ADD_WAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_employee_wage),
+                CommandHandler("skip", receive_employee_wage),
+            ],
+        },
+        fallbacks=[CommandHandler("start", cancel_add), CommandHandler("cancel", cancel_add)],
+        per_user=True,
+        per_chat=True,
     conv_handler = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(start_add_employee, pattern=f"^{CB.AUTH_APPROVE}:add$")
@@ -247,6 +265,7 @@ def get_handlers():
             ],
         },
         fallbacks=[CommandHandler("start", cancel_add), CommandHandler("cancel", cancel_add)],
+        name="auth_conv_1", persistent=True,
         per_user=True,
         per_chat=True,
     )

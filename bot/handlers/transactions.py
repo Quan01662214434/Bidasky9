@@ -359,7 +359,6 @@ async def cancel_txn(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
-    transfer_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_transfer, pattern=f"^{CB.TXN_TRANSFER}:start$")],
         states={
             TXN_BILL: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_txn_bill)],
@@ -368,9 +367,18 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_txn), CallbackQueryHandler(cancel_txn, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    transfer_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_transfer, pattern=f"^{CB.TXN_TRANSFER}:start$")],
+        states={
+            TXN_BILL: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_txn_bill)],
+            TXN_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_txn_amount)],
+            TXN_CONFIRM: [CallbackQueryHandler(confirm_transfer, pattern=f"^{CB.TXN_TRANSFER}:confirm")],
+        },
+        fallbacks=[CommandHandler('start', cancel_txn), CallbackQueryHandler(cancel_txn, pattern=f"^{CB.BACK}:menu$")],
+        name="transactions_conv_1", persistent=True,
+        per_user=True, per_chat=True,
     )
     
-    expense_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_expense, pattern=f"^{CB.TXN_EXPENSE}:start$")],
         states={
             EXP_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_exp_amount)],
@@ -381,8 +389,28 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_txn), CallbackQueryHandler(cancel_txn, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    expense_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_expense, pattern=f"^{CB.TXN_EXPENSE}:start$")],
+        states={
+            EXP_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_exp_amount)],
+            EXP_DESC: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_exp_desc)],
+            EXP_CAT: [CallbackQueryHandler(receive_exp_category, pattern=f"^{CB.TXN_EXPENSE}:cat:")],
+            EXP_SOURCE: [CallbackQueryHandler(receive_exp_source, pattern=f"^{CB.TXN_EXPENSE}:src:")],
+            EXP_CONFIRM: [CallbackQueryHandler(confirm_expense, pattern=f"^{CB.TXN_EXPENSE}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_txn), CallbackQueryHandler(cancel_txn, pattern=f"^{CB.BACK}:menu$")],
+        name="transactions_conv_2", persistent=True,
+        per_user=True, per_chat=True,
     )
     
+        entry_points=[CallbackQueryHandler(start_cash_to_owner, pattern=f"^{CB.TXN_CASH_OWNER}:start$")],
+        states={
+            CASH_OWNER_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_cash_owner_amount)],
+            CASH_OWNER_REASON: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_cash_owner_reason)],
+            CASH_OWNER_CONFIRM: [CallbackQueryHandler(confirm_cash_to_owner, pattern=f"^{CB.TXN_CASH_OWNER}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_txn), CallbackQueryHandler(cancel_txn, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     cash_owner_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_cash_to_owner, pattern=f"^{CB.TXN_CASH_OWNER}:start$")],
         states={
@@ -391,6 +419,7 @@ def get_handlers():
             CASH_OWNER_CONFIRM: [CallbackQueryHandler(confirm_cash_to_owner, pattern=f"^{CB.TXN_CASH_OWNER}:confirm$")],
         },
         fallbacks=[CommandHandler('start', cancel_txn), CallbackQueryHandler(cancel_txn, pattern=f"^{CB.BACK}:menu$")],
+        name="transactions_conv_3", persistent=True,
         per_user=True, per_chat=True,
     )
     

@@ -57,6 +57,8 @@ from fastapi import Request
 
 bot_application = None  # Will be initialized on startup
 _keep_alive_task = None  # Background task to prevent Render from sleeping
+_processed_update_ids = set()  # Dedup webhook updates
+_MAX_PROCESSED_IDS = 2000      # Limit set size
 
 
 async def _keep_alive_loop():
@@ -161,7 +163,12 @@ async def shutdown_event():
 
 @app.post("/telegram-webhook/{token}")
 async def telegram_webhook(token: str, request: Request):
-    """Endpoint nhận update từ Telegram webhook."""
+    """Endpoint nhận update từ Telegram webhook.
+    
+    Includes update_id dedup to prevent double-processing when
+    Telegram retries or user clicks buttons multiple times.
+    """
+    global _processed_update_ids
     bot_token = os.getenv("BOT_TOKEN", "")
     if token != bot_token:
         raise HTTPException(status_code=403, detail="Invalid token")
@@ -171,6 +178,22 @@ async def telegram_webhook(token: str, request: Request):
     
     try:
         data = await request.json()
+        update_id = data.get("update_id")
+        
+        # Dedup: skip if already processed
+        if update_id and update_id in _processed_update_ids:
+            logger.debug("Skipped duplicate update_id=%s", update_id)
+            return {"ok": True}
+        
+        # Track this update
+        if update_id:
+            _processed_update_ids.add(update_id)
+            # Prevent unbounded growth
+            if len(_processed_update_ids) > _MAX_PROCESSED_IDS:
+                # Remove oldest half
+                sorted_ids = sorted(_processed_update_ids)
+                _processed_update_ids = set(sorted_ids[_MAX_PROCESSED_IDS // 2:])
+        
         update = Update.de_json(data, bot_application.bot)
         await bot_application.process_update(update)
     except Exception as e:
@@ -780,57 +803,96 @@ async def api_save_employee(payload: EmployeePayload, auth: bool = Depends(verif
 
 @app.get("/api/v2/salary")
 async def api_salary(month: str = None, auth: bool = Depends(verify_owner_auth)):
+    """Tính lương tháng — dùng approved_minutes từ attendance_sessions,
+    đồng bộ logic với bot/services/salary_service.py."""
     conn = get_db()
     try:
         if not month:
             month = vn_now().strftime("%Y-%m")
-            
+
+        # Khoảng ngày trong tháng
+        year_s, month_s = month.split("-")
+        year_i, month_i = int(year_s), int(month_s)
+        from_date = f"{year_i:04d}-{month_i:02d}-01"
+        if month_i == 12:
+            to_date = f"{year_i + 1:04d}-01-01"
+        else:
+            to_date = f"{year_i:04d}-{month_i + 1:02d}-01"
+
         # Get employees
-        employees = conn.execute("SELECT telegram_id, display_name FROM users WHERE role IN ('employee', 'owner')").fetchall()
-        
+        employees = conn.execute(
+            "SELECT telegram_id, display_name FROM users WHERE role IN ('employee', 'owner') AND is_active = 1"
+        ).fetchall()
+
         salary_data = []
         for emp in employees:
             emp_id = emp["telegram_id"]
-            
-            # Count shifts
-            shifts = conn.execute("""
-                SELECT COUNT(*) as shift_count, SUM(duration_hours) as total_hours 
-                FROM attendance_sessions 
-                WHERE employee_id = %s AND status = 'checked_out' AND checkin_time LIKE %s
-            """, (emp_id, month + "%")).fetchone()
-            
-            # Get latest rate before or during this month
+
+            # Lấy phiên công đã checkout trong tháng (dùng shift_date, giống salary_service)
+            sessions = conn.execute("""
+                SELECT COUNT(*) as shift_count,
+                       COALESCE(SUM(approved_minutes), 0) as total_minutes
+                FROM attendance_sessions
+                WHERE employee_id = ? AND shift_date >= ? AND shift_date < ?
+                AND status IN ('checked_out', 'owner_created')
+                AND approved_minutes IS NOT NULL
+            """, (emp_id, from_date, to_date)).fetchone()
+
+            total_minutes = sessions["total_minutes"] or 0
+            total_hours = round(total_minutes / 60, 2)
+
+            # Get latest hourly rate effective before/during this month
             rate_row = conn.execute("""
-                SELECT hourly_rate FROM wage_rates 
-                WHERE employee_id = %s AND effective_from <= %s 
+                SELECT hourly_rate FROM wage_rates
+                WHERE employee_id = ? AND effective_from <= ?
                 ORDER BY effective_from DESC LIMIT 1
-            """, (emp_id, month + "-31")).fetchone()
+            """, (emp_id, to_date)).fetchone()
             rate = rate_row["hourly_rate"] if rate_row else 0
-            
-            # Get advances (tạm ứng)
+
+            # Gross = minutes * rate / 60
+            gross_salary = int(total_minutes * rate / 60) if rate else 0
+
+            # Ứng lương đã giao (delivered) chưa đối trừ
             advances = conn.execute("""
-                SELECT SUM(amount) as total_advance 
-                FROM salary_advances 
-                WHERE employee_id = %s AND status = 'approved' AND request_date LIKE %s
-            """, (emp_id, month + "%")).fetchone()
+                SELECT COALESCE(SUM(
+                    CASE WHEN remaining_unsettled IS NOT NULL THEN remaining_unsettled
+                         ELSE amount END
+                ), 0) as total_advance
+                FROM salary_advances
+                WHERE employee_id = ? AND status = 'delivered'
+                AND (remaining_unsettled > 0 OR remaining_unsettled IS NULL)
+            """, (emp_id,)).fetchone()
             advance = advances["total_advance"] or 0
-            
-            # Gross salary based on exact wages from attendance might be better, 
-            # but for simplicity we calculate based on total_hours * rate
-            total_hours = shifts["total_hours"] or 0
-            gross_salary = total_hours * rate
-            net_salary = gross_salary - advance
-            
+
+            # Đồ dùng nhân viên trong tháng
+            consumables = conn.execute("""
+                SELECT COALESCE(SUM(
+                    cu.quantity * COALESCE(cp.unit_price, 0)
+                ), 0) as total_consumable
+                FROM consumable_usage cu
+                LEFT JOIN consumable_prices cp
+                  ON cu.item_id = cp.item_id
+                  AND cp.period_year = ? AND cp.period_month = ?
+                WHERE cu.employee_id = ? AND cu.is_free = 0
+                AND cu.usage_datetime >= ? AND cu.usage_datetime < ?
+            """, (year_i, month_i, emp_id, from_date, to_date)).fetchone()
+            consumable_total = consumables["total_consumable"] or 0
+
+            net_salary = gross_salary - advance - consumable_total
+
             salary_data.append({
                 "employee_id": emp_id,
                 "name": emp["display_name"],
-                "shift_count": shifts["shift_count"],
+                "shift_count": sessions["shift_count"] or 0,
                 "total_hours": total_hours,
+                "total_minutes": total_minutes,
+                "hourly_rate": rate,
                 "base_salary": gross_salary,
                 "advance": advance,
-                "net_salary": net_salary
+                "consumable": consumable_total,
+                "net_salary": net_salary,
             })
-            
+
         return {"month": month, "salaries": salary_data}
     finally:
         pass  # autocommit

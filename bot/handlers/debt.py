@@ -533,7 +533,6 @@ async def cancel_debt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
-    new_debt_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_new_debt, pattern=f"^{CB.DEBT_NEW}:start$")],
         states={
             DN_CUSTOMER: [
@@ -554,8 +553,40 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_debt), CallbackQueryHandler(cancel_debt, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    new_debt_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_new_debt, pattern=f"^{CB.DEBT_NEW}:start$")],
+        states={
+            DN_CUSTOMER: [
+                CallbackQueryHandler(select_customer, pattern=f"^{CB.DEBT_NEW}:(cust|new_cust)"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_customer_name),
+            ],
+            DN_BILL: [MessageHandler(filters.TEXT, receive_debt_bill)],
+            DN_TOTAL: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_debt_total)],
+            DN_PAID: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_debt_paid)],
+            DN_ITEMS: [MessageHandler(filters.TEXT, receive_debt_items)],
+            DN_DUE: [MessageHandler(filters.TEXT, receive_debt_due)],
+            DN_PHOTO: [
+                MessageHandler(filters.PHOTO, receive_debt_photo),
+                MessageHandler(filters.TEXT, receive_debt_photo),
+                CallbackQueryHandler(receive_debt_photo, pattern=f"^{CB.DEBT_NEW}:skip_photo$"),
+            ],
+            DN_CONFIRM: [CallbackQueryHandler(confirm_new_debt, pattern=f"^{CB.DEBT_NEW}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_debt), CallbackQueryHandler(cancel_debt, pattern=f"^{CB.BACK}:menu$")],
+        name="debt_conv_1", persistent=True,
+        per_user=True, per_chat=True,
     )
     
+        entry_points=[CallbackQueryHandler(start_collect_debt, pattern=f"^{CB.DEBT_COLLECT}:start$")],
+        states={
+            DC_CUSTOMER: [CallbackQueryHandler(select_debt_customer, pattern=f"^{CB.DEBT_COLLECT}:cust:")],
+            DC_DEBT: [CallbackQueryHandler(select_debt_record, pattern=f"^{CB.DEBT_COLLECT}:debt:")],
+            DC_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_collect_amount)],
+            DC_METHOD: [CallbackQueryHandler(select_collect_method, pattern=f"^{CB.DEBT_COLLECT}:method:")],
+            DC_CONFIRM: [CallbackQueryHandler(confirm_collect, pattern=f"^{CB.DEBT_COLLECT}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_debt), CallbackQueryHandler(cancel_debt, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     collect_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_collect_debt, pattern=f"^{CB.DEBT_COLLECT}:start$")],
         states={
@@ -566,6 +597,7 @@ def get_handlers():
             DC_CONFIRM: [CallbackQueryHandler(confirm_collect, pattern=f"^{CB.DEBT_COLLECT}:confirm$")],
         },
         fallbacks=[CommandHandler('start', cancel_debt), CallbackQueryHandler(cancel_debt, pattern=f"^{CB.BACK}:menu$")],
+        name="debt_conv_2", persistent=True,
         per_user=True, per_chat=True,
     )
     

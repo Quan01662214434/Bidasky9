@@ -249,12 +249,19 @@ async def cancel_rpt(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
+        entry_points=[CallbackQueryHandler(start_input_bill, pattern=f"^{CB.RPT_DAY}:input:")],
+        states={
+            RPT_BILL: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bill_total)],
+        },
+        fallbacks=[CommandHandler('start', cancel_rpt), CallbackQueryHandler(cancel_rpt, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     bill_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_input_bill, pattern=f"^{CB.RPT_DAY}:input:")],
         states={
             RPT_BILL: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bill_total)],
         },
         fallbacks=[CommandHandler('start', cancel_rpt), CallbackQueryHandler(cancel_rpt, pattern=f"^{CB.BACK}:menu$")],
+        name="reports_conv_1", persistent=True,
         per_user=True, per_chat=True,
     )
     

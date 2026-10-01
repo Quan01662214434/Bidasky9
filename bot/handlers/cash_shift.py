@@ -605,7 +605,6 @@ async def cancel_shift_action(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 def get_handlers():
     """Trả về handlers."""
-    open_conv = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(start_open_shift, pattern=f"^{CB.CS_OPEN}:start$"),
         ],
@@ -622,8 +621,59 @@ def get_handlers():
             CallbackQueryHandler(cancel_shift_action, pattern=f"^{CB.BACK}:menu$"),
         ],
         per_user=True, per_chat=True,
+    open_conv = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(start_open_shift, pattern=f"^{CB.CS_OPEN}:start$"),
+        ],
+        states={
+            CS_OPEN_CASH: [
+                CallbackQueryHandler(ack_debt_handover, pattern=f"^{CB.DEBT_ACK}:ack$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_opening_cash),
+            ],
+            CS_OPEN_CONFIRM: [
+                CallbackQueryHandler(confirm_open_shift, pattern=f"^{CB.CS_OPEN}:confirm$"),
+            ],
+        },
+        fallbacks=[
+            CallbackQueryHandler(cancel_shift_action, pattern=f"^{CB.BACK}:menu$"),
+        ],
+        name="cash_shift_conv_1", persistent=True,
+        per_user=True, per_chat=True,
     )
     
+        entry_points=[
+            CallbackQueryHandler(start_close_shift, pattern=f"^{CB.CS_CLOSE}:start$"),
+        ],
+        states={
+            CS_CLOSE_BILL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bill_total),
+            ],
+            CS_CLOSE_OLD_BILL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_old_bill),
+            ],
+            CS_CLOSE_NEW_BILL: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_new_bill),
+            ],
+            CS_CLOSE_CASH: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_closing_cash),
+            ],
+            CS_CLOSE_EXTRA_EXPENSE_AMT: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_extra_expense_amount),
+            ],
+            CS_CLOSE_EXTRA_EXPENSE_NOTE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_extra_expense_note),
+            ],
+            CS_CLOSE_NOTE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, receive_closing_note),
+            ],
+            CS_CLOSE_CONFIRM: [
+                CallbackQueryHandler(confirm_close_shift, pattern=f"^{CB.CS_CLOSE}:confirm$"),
+            ],
+        },
+        fallbacks=[
+            CallbackQueryHandler(cancel_shift_action, pattern=f"^{CB.BACK}:menu$"),
+        ],
+        per_user=True, per_chat=True,
     close_conv = ConversationHandler(
         entry_points=[
             CallbackQueryHandler(start_close_shift, pattern=f"^{CB.CS_CLOSE}:start$"),
@@ -657,6 +707,7 @@ def get_handlers():
         fallbacks=[
             CallbackQueryHandler(cancel_shift_action, pattern=f"^{CB.BACK}:menu$"),
         ],
+        name="cash_shift_conv_2", persistent=True,
         per_user=True, per_chat=True,
     )
     

@@ -500,7 +500,6 @@ async def cancel_sal(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def get_handlers():
     """Trả về handlers."""
-    advance_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_advance, pattern=f"^{CB.SAL_ADVANCE}:start$")],
         states={
             ADV_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_adv_amount)],
@@ -509,9 +508,18 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    advance_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_advance, pattern=f"^{CB.SAL_ADVANCE}:start$")],
+        states={
+            ADV_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_adv_amount)],
+            ADV_REASON: [MessageHandler(filters.TEXT, receive_adv_reason)],
+            ADV_CONFIRM: [CallbackQueryHandler(confirm_advance, pattern=f"^{CB.SAL_ADVANCE}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
+        name="salary_conv_1", persistent=True,
+        per_user=True, per_chat=True,
     )
     
-    consumable_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_log_consumable, pattern=f"^{CB.CON_LOG}:start$")],
         states={
             CON_ITEM: [CallbackQueryHandler(select_consumable, pattern=f"^{CB.CON_LOG}:item:")],
@@ -520,23 +528,47 @@ def get_handlers():
         },
         fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    consumable_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(start_log_consumable, pattern=f"^{CB.CON_LOG}:start$")],
+        states={
+            CON_ITEM: [CallbackQueryHandler(select_consumable, pattern=f"^{CB.CON_LOG}:item:")],
+            CON_QTY: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_con_qty)],
+            CON_CONFIRM: [CallbackQueryHandler(confirm_consumable, pattern=f"^{CB.CON_LOG}:confirm$")],
+        },
+        fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
+        name="salary_conv_2", persistent=True,
+        per_user=True, per_chat=True,
     )
     
-    price_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(select_price_item, pattern=f"^{CB.CON_PRICE}:(item|copy)")],
         states={
             PRICE_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
         },
         fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
         per_user=True, per_chat=True,
+    price_conv = ConversationHandler(
+        entry_points=[CallbackQueryHandler(select_price_item, pattern=f"^{CB.CON_PRICE}:(item|copy)")],
+        states={
+            PRICE_AMOUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_price)],
+        },
+        fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
+        name="salary_conv_3", persistent=True,
+        per_user=True, per_chat=True,
     )
     
+        entry_points=[CallbackQueryHandler(start_bonus_input, pattern=f"^{CB.SAL_CALC}:bonus:")],
+        states={
+            SAL_BONUS_AMT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bonus_amount)],
+        },
+        fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
+        per_user=True, per_chat=True,
     bonus_conv = ConversationHandler(
         entry_points=[CallbackQueryHandler(start_bonus_input, pattern=f"^{CB.SAL_CALC}:bonus:")],
         states={
             SAL_BONUS_AMT: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_bonus_amount)],
         },
         fallbacks=[CommandHandler('start', cancel_sal), CallbackQueryHandler(cancel_sal, pattern=f"^{CB.BACK}:menu$")],
+        name="salary_conv_4", persistent=True,
         per_user=True, per_chat=True,
     )
     
