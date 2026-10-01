@@ -101,10 +101,15 @@ async def setup_periodic_jobs(application):
     
     async def periodic_unclosed_check(context):
         await check_unclosed_sessions(context.bot)
+        
+    async def periodic_photo_retry(context):
+        from bot.services.photo_queue_service import process_photo_upload_queue
+        await process_photo_upload_queue()
     
     job_queue = application.job_queue
     if job_queue:
         job_queue.run_repeating(periodic_notifications, interval=60, first=10)
         job_queue.run_repeating(periodic_late_check, interval=300, first=60)
-        job_queue.run_repeating(periodic_unclosed_check, interval=900, first=120)
+        job_queue.run_repeating(periodic_unclosed_check, interval=60, first=60)
+        job_queue.run_repeating(periodic_photo_retry, interval=300, first=30)
         logger.info("Đã đăng ký periodic jobs")

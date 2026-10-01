@@ -59,14 +59,14 @@ async def _upload_to_supabase(file_bytes: bytes, remote_path: str) -> str | None
         logger.error("Supabase upload error: %s", e)
         return None
 
-def _queue_failed_upload(file_id: str, file_unique_id: str, category: str, reference_id: str, uploader_id: int, local_path: str, error_msg: str):
+def _queue_failed_upload(file_id: str, file_unique_id: str, category: str, reference_id: str, uploader_id: int, local_path: str, error_msg: str, file_bytes: bytes = None):
     from bot.models.database import get_connection, now_utc_iso
     conn = get_connection()
     conn.execute(
         """INSERT INTO pending_photo_uploads 
-           (file_id, file_unique_id, category, reference_id, uploader_id, local_path, last_error, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (file_id, file_unique_id, category, reference_id, uploader_id, local_path, error_msg, now_utc_iso())
+           (file_id, file_unique_id, category, reference_id, uploader_id, local_path, file_data, last_error, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (file_id, file_unique_id, category, reference_id, uploader_id, local_path, file_bytes, error_msg, now_utc_iso())
     )
 
 async def save_photo_from_telegram(
@@ -107,11 +107,11 @@ async def save_photo_from_telegram(
             
             # Queue for retry
             logger.warning("Upload failed, queuing for retry: %s", remote_path)
-            _queue_failed_upload(file_id, file_unique_id, category, reference_id, uploader_id, local_path, "Upload failed")
+            _queue_failed_upload(file_id, file_unique_id, category, reference_id, uploader_id, local_path, "Upload failed", bytes(file_bytes))
             return f"pending://{local_path}"
         
         # Nếu chưa config supabase
-        _queue_failed_upload(file_id, file_unique_id, category, reference_id, uploader_id, local_path, "No Supabase config")
+        _queue_failed_upload(file_id, file_unique_id, category, reference_id, uploader_id, local_path, "No Supabase config", bytes(file_bytes))
         return f"pending://{local_path}"
 
     except Exception as e:

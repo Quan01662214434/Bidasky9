@@ -113,12 +113,14 @@ async def confirm_transfer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     
     try:
+        idem_key = f"tf_{update.effective_message.message_id}_{user_id}"
         result = record_bank_transfer(
             cash_shift_id=context.user_data["txn_shift_id"],
             bill_code=context.user_data["txn_bill"],
             amount=context.user_data["txn_amount"],
             recorded_by=user_id,
             verified=verified,
+            idempotency_key=idem_key
         )
         
         status = "✅ Đã xác nhận" if verified else "⏳ Chờ xác nhận tiền vào"
@@ -245,6 +247,7 @@ async def confirm_expense(update: Update, context: ContextTypes.DEFAULT_TYPE):
         shift_id = shift["id"]
     
     try:
+        idem_key = f"exp_{update.effective_message.message_id}_{user_id}"
         record_expense(
             cash_shift_id=shift_id,
             amount=context.user_data["exp_amount"],
@@ -252,6 +255,7 @@ async def confirm_expense(update: Update, context: ContextTypes.DEFAULT_TYPE):
             category=context.user_data["exp_cat"],
             recorded_by=user_id,
             is_cash=is_cash,
+            idempotency_key=idem_key
         )
         await query.edit_message_text(
             f"✅ *Đã ghi chi*\n\n"
@@ -325,11 +329,13 @@ async def confirm_cash_to_owner(update: Update, context: ContextTypes.DEFAULT_TY
         return ConversationHandler.END
     
     try:
+        idem_key = f"c2o_{update.effective_message.message_id}_{user_id}"
         record_cash_to_owner(
             cash_shift_id=shift["id"],
             amount=context.user_data["cash_owner_amount"],
             recorded_by=user_id,
             reason=context.user_data.get("cash_owner_reason"),
+            idempotency_key=idem_key
         )
         await query.edit_message_text(
             f"✅ *Đã ghi giao tiền chủ*\n"

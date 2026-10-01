@@ -1,4 +1,3 @@
--- Bảng lưu trữ các ảnh cần retry upload lên Supabase (do mạng hoặc Supabase lỗi)
 CREATE TABLE IF NOT EXISTS pending_photo_uploads (
     id SERIAL PRIMARY KEY,
     file_id TEXT NOT NULL,
@@ -7,6 +6,7 @@ CREATE TABLE IF NOT EXISTS pending_photo_uploads (
     reference_id TEXT NOT NULL,
     uploader_id BIGINT NOT NULL,
     local_path TEXT NOT NULL,
+    file_data BYTEA,           -- Dữ liệu ảnh thực tế để phục hồi sau restart
     status TEXT NOT NULL DEFAULT 'pending', -- pending/failed/success
     retry_count BIGINT DEFAULT 0,
     last_error TEXT,

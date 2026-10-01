@@ -191,42 +191,67 @@ async def check_late_checkins(bot: Bot):
 
 
 async def check_unclosed_sessions(bot: Bot):
-    """Kiểm tra phiên công đang mở quá giờ."""
+    """Kiểm tra ca trước chưa checkout khi ca sau đã gửi ảnh check-in."""
     conn = get_connection()
     now = vn_now()
     
-    checkout_threshold = 5  # phút sau giờ kết thúc ca
-    
-    open_sessions = conn.execute(
-        """SELECT a.*, u.display_name
+    # Lấy các ca sau đang chờ nhận ca (đã gửi ảnh)
+    waiting_sessions = conn.execute(
+        """SELECT a.id, a.employee_id, a.checkin_photo_received_at, u.display_name
            FROM attendance_sessions a
            JOIN users u ON a.employee_id = u.telegram_id
-           WHERE a.status = 'checked_in' AND a.scheduled_end IS NOT NULL"""
+           WHERE a.status = 'pending_handover' AND a.checkin_photo_received_at IS NOT NULL"""
     ).fetchall()
     
-    for s in open_sessions:
-        scheduled_end = datetime.fromisoformat(s["scheduled_end"])
-        if now > scheduled_end + timedelta(minutes=checkout_threshold):
-            elapsed = int((now - scheduled_end).total_seconds() / 60)
+    for wait_s in waiting_sessions:
+        photo_received = datetime.fromisoformat(wait_s["checkin_photo_received_at"].replace("Z", "+00:00"))
+        if photo_received.tzinfo is None:
+            photo_received = pytz.utc.localize(photo_received)
             
-            dedup = f"unclosed_{s['id']}_{now.strftime('%Y%m%d%H')}"
+        if now > photo_received + timedelta(minutes=5):
+            elapsed = int((now - photo_received).total_seconds() / 60)
             
-            await queue_notification(
-                s["employee_id"],
-                f"⏰ Phiên công chưa đóng. Bạn đang làm thêm? "
-                f"Đã quá giờ kết thúc ca {elapsed} phút.\n"
-                f"Nhớ check-out khi xong.",
-                "unclosed_reminder",
-                "attendance_sessions", s["id"],
-                dedup_key=dedup + "_emp"
-            )
+            # Tìm ca trước chưa checkout
+            prev_sessions = conn.execute(
+                """SELECT a.id, a.employee_id, u.display_name
+                   FROM attendance_sessions a
+                   JOIN users u ON a.employee_id = u.telegram_id
+                   WHERE a.status = 'checked_in' AND a.employee_id != ?""",
+                (wait_s["employee_id"],)
+            ).fetchall()
             
-            await notify_owner(
-                bot,
-                f"⚠️ *Phiên công chưa đóng*\n"
-                f"NV: {s['display_name']}\n"
-                f"Quá giờ kết thúc: {elapsed} phút\n"
-                f"_(Có thể đang làm thêm)_",
-                "unclosed_alert",
-                "attendance_sessions", s["id"]
-            )
+            for prev_s in prev_sessions:
+                dedup = f"checkout_reminder_{wait_s['id']}_{prev_s['id']}"
+                
+                # Nhắc nhân viên ca trước
+                await queue_notification(
+                    prev_s["employee_id"],
+                    f"⏰ BẠN CHƯA CHECK-OUT!\n\n"
+                    f"Nhân viên ca sau ({wait_s['display_name']}) đã đến và gửi ảnh check-in từ {elapsed} phút trước.\n"
+                    f"Hãy hoàn tất bàn giao và Check-out ngay để ca sau bắt đầu tính công.",
+                    "unclosed_reminder",
+                    "attendance_sessions", prev_s["id"],
+                    dedup_key=dedup + "_prev"
+                )
+                
+                # Báo nhân viên ca sau
+                await queue_notification(
+                    wait_s["employee_id"],
+                    f"⏳ Ca trước ({prev_s['display_name']}) vẫn chưa check-out.\n"
+                    f"Hệ thống đã gửi thông báo nhắc nhở. Lương của bạn sẽ tính từ lúc người đó xác nhận chốt ca.",
+                    "unclosed_alert",
+                    "attendance_sessions", wait_s["id"],
+                    dedup_key=dedup + "_next"
+                )
+                
+                # Báo chủ quán
+                await notify_owner(
+                    bot,
+                    f"⚠️ *Kẹt Bàn Giao Ca*\n\n"
+                    f"Ca sau: {wait_s['display_name']} đã gửi ảnh {elapsed} phút trước.\n"
+                    f"Ca trước: {prev_s['display_name']} vẫn chưa check-out.\n"
+                    f"_(Hệ thống đã tự động nhắc nhở cả 2)_",
+                    "unclosed_alert",
+                    "attendance_sessions", prev_s["id"],
+                    dedup_key=dedup + "_owner"
+                )
