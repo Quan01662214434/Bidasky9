@@ -6,6 +6,7 @@ import sqlite3
 import os
 import json
 import logging
+import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -15,6 +16,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
+import httpx
 import pytz
 
 load_dotenv()
@@ -54,11 +56,36 @@ from telegram import Update
 from fastapi import Request
 
 bot_application = None  # Will be initialized on startup
+_keep_alive_task = None  # Background task to prevent Render from sleeping
+
+
+async def _keep_alive_loop():
+    """Self-ping every 10 min to prevent Render Free Tier from sleeping."""
+    base_url = os.getenv("RENDER_EXTERNAL_URL", os.getenv("WEBAPP_URL", ""))
+    if not base_url:
+        logger.warning("No RENDER_EXTERNAL_URL, keep-alive disabled")
+        return
+
+    health_url = f"{base_url}/health"
+    logger.info("Keep-alive enabled: ping %s every 10 min", health_url)
+
+    while True:
+        try:
+            await asyncio.sleep(600)  # 10 minutes
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.get(health_url)
+                logger.debug("Keep-alive ping: %s", resp.status_code)
+        except asyncio.CancelledError:
+            logger.info("Keep-alive stopped")
+            break
+        except Exception as e:
+            logger.warning("Keep-alive ping error: %s", e)
+
 
 @app.on_event("startup")
 async def startup_event():
     """Khởi tạo bot và đăng ký webhook khi server start."""
-    global bot_application
+    global bot_application, _keep_alive_task
     
     logging.basicConfig(
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -95,6 +122,12 @@ async def startup_event():
         else:
             logger.warning("Không tìm thấy RENDER_EXTERNAL_URL hoặc BOT_TOKEN, webhook chưa được đăng ký")
         
+        # Bật keep-alive self-ping để Render không ngủ
+
+        _keep_alive_task = asyncio.create_task(_keep_alive_loop())
+
+        
+
         logger.info("=== BOT ĐÃ SẴN SÀNG (WEBHOOK MODE) ===")
         
     except Exception as e:
@@ -104,13 +137,26 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup khi server shutdown."""
-    global bot_application
+    global bot_application, _keep_alive_task
+    
+    # Stop keep-alive
+    if _keep_alive_task:
+        _keep_alive_task.cancel()
+        try:
+            await _keep_alive_task
+        except asyncio.CancelledError:
+            pass
+    
+    # Stop bot with timeout
     if bot_application:
         try:
-            await bot_application.stop()
-            await bot_application.shutdown()
-        except Exception:
-            pass
+            await asyncio.wait_for(bot_application.stop(), timeout=10)
+            await asyncio.wait_for(bot_application.shutdown(), timeout=10)
+            logger.info("Bot shutdown successfully")
+        except asyncio.TimeoutError:
+            logger.warning("Bot shutdown timeout, forcing exit")
+        except Exception as e:
+            logger.error("Bot shutdown error: %s", e)
 
 
 @app.post("/telegram-webhook/{token}")

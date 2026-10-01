@@ -109,11 +109,13 @@ async def notify_owner(bot: Bot, message: str, notification_type: str = "general
         conn = get_connection()
         conn.execute(
             """UPDATE notification_queue SET status = 'sent', sent_at = ?
-               WHERE recipient_id = ? AND notification_type = ? AND status = 'pending'
-               ORDER BY created_at DESC LIMIT 1""",
+               WHERE id = (
+                   SELECT id FROM notification_queue 
+                   WHERE recipient_id = ? AND notification_type = ? AND status = 'pending'
+                   ORDER BY created_at DESC LIMIT 1
+               )""",
             (now_utc_iso(), owner_id, notification_type)
         )
-        conn.commit()
     except Exception as e:
         logger.error("Lỗi gửi cho chủ: %s", e)
 

@@ -129,7 +129,7 @@ def get_employee_consumable_summary(employee_id: int, year: int, month: int) -> 
            FROM consumable_usage cu
            JOIN consumable_items ci ON cu.item_id = ci.id
            WHERE cu.employee_id = ? AND cu.usage_datetime >= ? AND cu.usage_datetime < ?
-           GROUP BY cu.item_id
+           GROUP BY cu.item_id, ci.name, ci.unit, ci.category
            ORDER BY ci.category, ci.name""",
         (employee_id, from_date, to_date)
     ).fetchall()

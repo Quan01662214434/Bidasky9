@@ -1,6 +1,7 @@
 """
 Bot Telegram Quản Lý Quán Bida
-Entry point chính.
+Entry point chính - CHỈ DÙNG CHO TEST LOCAL.
+Trên Render, bot chạy qua web_server.py (webhook mode).
 """
 
 import logging
@@ -97,7 +98,7 @@ def main():
     
     from bot.models.database import get_connection
     def ensure_default_shifts():
-         conn = get_connection()
+        conn = get_connection()
         count = conn.execute("SELECT COUNT(*) as c FROM shift_templates").fetchone()["c"]
         if count == 0:
             from bot.services.shift_service import create_shift_template
@@ -122,11 +123,9 @@ def main():
     )
     
     # ─── Global Error Handler ───
-    # Bắt MỌI lỗi từ handler, log lại nhưng KHÔNG crash bot
     async def error_handler(update, context):
         """Log lỗi nhưng giữ bot chạy."""
         logger.error("Exception trong handler: %s", context.error, exc_info=context.error)
-        # Thử thông báo user nếu có thể
         try:
             if update and update.effective_message:
                 await update.effective_message.reply_text(
@@ -137,20 +136,10 @@ def main():
     
     application.add_error_handler(error_handler)
     
-    # Register handlers theo thứ tự ưu tiên
-    # ConversationHandlers phải trước CallbackQueryHandlers đơn lẻ
+    # Register handlers
     handler_modules = [
-        auth,           # ConversationHandler thêm NV
-        cash_shift,     # ConversationHandler mở/đóng ca
-        transactions,   # ConversationHandler CK, chi, giao tiền
-        debt,           # ConversationHandler ghi nợ, thu nợ + callback
-        attendance,     # ConversationHandler check-in/sửa công + callback
-        shift_reg,      # Callbacks đăng ký ca
-        salary,         # ConversationHandler ứng lương, ghi đồ + callbacks
-        inventory,      # ConversationHandler nhập hàng, kiểm kê + callback
-        reports,        # ConversationHandler nhập bill + callbacks
-        dashboard,      # Dashboard Hôm nay
-        start,          # Menu chính (catch-all callbacks cuối cùng)
+        auth, cash_shift, transactions, debt, attendance,
+        shift_reg, salary, inventory, reports, dashboard, start,
     ]
     
     for module in handler_modules:
@@ -159,7 +148,7 @@ def main():
     
     logger.info("Đã đăng ký %d handler modules", len(handler_modules))
     
-    # Start polling
+    # Start polling (local only - Render uses webhook)
     logger.info("Bắt đầu polling...")
     application.run_polling(
         drop_pending_updates=True,
@@ -169,4 +158,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -177,32 +177,40 @@ async def handle_quick_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
     elif text == "✅ Check-in":
         pass  # ConversationHandler trong attendance.py xử lý trực tiếp
     elif text == "🚪 Check-out":
-        from bot.handlers.attendance import do_checkout
-        class FakeQuery:
-            def __init__(self, data): self.data = data
-            async def answer(self, text=None, show_alert=False): pass
-            async def edit_message_text(self, *args, **kwargs):
-                await update.message.reply_text(*args, **kwargs)
-        update.callback_query = FakeQuery(f"{CB.ATT_CHECKOUT}:do")
-        await do_checkout(update, context)
+        from bot.services.attendance_service import checkout
+        try:
+            result = checkout(update.effective_user.id)
+            from bot.utils.formatters import format_datetime_vn, format_duration
+            msg = f"✅ *ĐÃ RA VỀ*\n\n"
+            msg += f"Giờ checkout: {format_datetime_vn(result['checkout_time'])}\n"
+            if result.get("approved_minutes"):
+                msg += f"Tổng làm: {format_duration(result['approved_minutes'])}\n"
+            if result.get("wage_amount"):
+                from bot.utils.formatters import format_money
+                msg += f"Lương ca: {format_money(result['wage_amount'])}\n"
+            await update.message.reply_text(msg, parse_mode="Markdown")
+        except ValueError as e:
+            await update.message.reply_text(f"❌ {str(e)}")
     elif text == "🏦 Nhận ca quỹ":
-        from bot.handlers.cash_shift import start_open_shift
-        class FakeQuery:
-            def __init__(self, data): self.data = data
-            async def answer(self, text=None, show_alert=False): pass
-            async def edit_message_text(self, *args, **kwargs):
-                await update.message.reply_text(*args, **kwargs)
-        update.callback_query = FakeQuery(f"{CB.CS_OPEN}:start")
-        await start_open_shift(update, context)
+        from bot.services.cash_shift_service import open_cash_shift
+        try:
+            result = open_cash_shift(update.effective_user.id)
+            from bot.utils.formatters import format_money
+            msg = f"✅ *ĐÃ NHẬN CA QUỸ*\n\n"
+            msg += f"Quỹ đầu ca: {format_money(result.get('opening_balance', 0))}\n"
+            await update.message.reply_text(msg, parse_mode="Markdown")
+        except ValueError as e:
+            await update.message.reply_text(f"❌ {str(e)}")
     elif text == "📊 Kết ca":
-        from bot.handlers.cash_shift import start_close_shift
-        class FakeQuery:
-            def __init__(self, data): self.data = data
-            async def answer(self, text=None, show_alert=False): pass
-            async def edit_message_text(self, *args, **kwargs):
-                await update.message.reply_text(*args, **kwargs)
-        update.callback_query = FakeQuery(f"{CB.CS_CLOSE}:start")
-        await start_close_shift(update, context)
+        from bot.services.cash_shift_service import get_open_cash_shift
+        shift = get_open_cash_shift(update.effective_user.id)
+        if not shift:
+            await update.message.reply_text("❌ Bạn không có ca quỹ đang mở.")
+        else:
+            await update.message.reply_text(
+                "📊 Để kết ca, vui lòng dùng nút trong *Menu* (bấm 🏠 Mở Menu).",
+                parse_mode="Markdown"
+            )
     elif text == "📱 Web App":
         from bot.config import Config
         role = get_user_role(update.effective_user.id)
@@ -216,14 +224,8 @@ async def handle_quick_reply(update: Update, context: ContextTypes.DEFAULT_TYPE)
         else:
             await update.message.reply_text("Chỉ chủ quán mới có quyền truy cập Bảng điều khiển.")
     elif text.startswith("⚠️ Khách nợ:"):
-        from bot.handlers.debt import list_debts
-        class FakeQuery:
-            def __init__(self, data): self.data = data
-            async def answer(self, text=None, show_alert=False): pass
-            async def edit_message_text(self, *args, **kwargs):
-                await update.message.reply_text(*args, **kwargs)
-        update.callback_query = FakeQuery(f"{CB.DEBT_LIST}:all")
-        await list_debts(update, context)
+        from bot.handlers.debt import show_debt_list
+        await show_debt_list(update, context)
 
 
 async def callback_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
